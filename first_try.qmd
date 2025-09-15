@@ -1,0 +1,72 @@
+---
+title: "Exploring EOPF Sentinel Zarr STAC API with R"
+format: html
+---
+
+# Trying a simple query, download, and visualization
+
+
+Load potentially useful packages
+
+```{r}
+library(sf)
+library(rstac)
+library(terra)
+library(stars)
+library(mapview)
+```
+
+
+
+Set data source (EOPF Sentinel Zarr Samples)
+```{r}
+stac_source <- stac("https://stac.core.eopf.eodc.eu/")
+str(stac_source)
+```
+
+Get a brief overview of the collection
+```{r}
+get_request(stac_source)
+```
+
+```{r}	
+collections_query <- stac_source |>
+  rstac::collections()
+
+collections_query
+str(collections_query)
+available_collections <- rstac::get_request(collections_query)
+available_collections
+```	
+
+
+Search Sentinel-2 L2A data for Münsterland in 2024
+```{r}
+search_query <- stac_search(
+    stac_source,
+    collections = "sentinel-2-l2a",
+    datetime = "2024-01-01T00:00:00Z/2024-12-31T23:59:59Z",
+    bbox = c(6.8, 51.8, 7.8, 52.4),
+    limit = 25
+  )
+executed_query <- get_request(search_query)
+
+```
+
+
+Download the assets B2, B3, B4 and B8 in 10m resolution
+
+```{r}
+download_dir <- file.path(getwd(), "sentinel_zarr")
+if (!dir.exists(download_dir)) {
+  dir.create(download_dir)
+}
+
+rstac::assets_download(items = executed_query, asset_names = c("B02_10m", "B03_10m", "B04_10m", "B08_10m"),
+  output_dir = download_dir,
+  overwrite = TRUE,
+)
+
+```
+--> this does not work (under Windows). Maybe it´s because `rstac::assets_download()` seems to create  subdirectories with names taken form the items href, which in this case contains colon characters that are not allowed in Windows folder names.
+

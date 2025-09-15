@@ -1,0 +1,48 @@
+---
+title: "Accessing Zarr data from STAC (?) using Rarr (??)"
+author: "Johannes Heisig"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+## Local Zarr with Rarr
+
+Read the sample Zarr array provided with the Rarr package
+```{r, message=FALSE, warning=FALSE}
+#remotes::install_github("sharlagelfand/Rarr")
+library(Rarr)
+
+# Using a local file provided with the package
+## This array has 3 dimensions
+z1 <- system.file("extdata", "zarr_examples", "row-first",
+  "int32.zarr",
+  package = "Rarr"
+)
+print(z1)
+
+## read the entire array
+z1_full = read_zarr_array(zarr_array_path = z1)
+dim(z1_full)
+```
+
+Check the metadata of the Zarr array
+```{r}
+library(jsonlite)
+array_meta = jsonlite::read_json(file.path(z1, ".zarray"))
+array_meta$shape
+```
+
+Convert to a stars object
+```{r}
+library(stars)
+(st_z1 = st_as_stars(z1_full))
+plot(st_z1)
+```
+
+
+Next: Recognise the dimensions as stars coordinates...
+```{r}
+#(st_z1 = st_as_stars(z1_full))
+
+```
+

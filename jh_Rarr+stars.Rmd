@@ -11,6 +11,7 @@ Read the sample Zarr array provided with the Rarr package
 ```{r, message=FALSE, warning=FALSE}
 #remotes::install_github("sharlagelfand/Rarr")
 library(Rarr)
+library(dplyr)
 
 # Using a local file provided with the package
 ## This array has 3 dimensions
@@ -18,7 +19,8 @@ z1 <- system.file("extdata", "zarr_examples", "row-first",
   "int32.zarr",
   package = "Rarr"
 )
-print(z1)
+zarr_overview(z1)
+
 
 ## read the entire array
 z1_full = read_zarr_array(zarr_array_path = z1)
@@ -32,11 +34,14 @@ array_meta = jsonlite::read_json(file.path(z1, ".zarray"))
 array_meta$shape
 ```
 
+
+
+
 Convert to a stars object
 ```{r}
 library(stars)
 (st_z1 = st_as_stars(z1_full))
-plot(st_z1)
+plot(st_z1, breaks = "equal")
 ```
 
 
@@ -46,3 +51,20 @@ Next: Recognise the dimensions as stars coordinates...
 
 ```
 
+## Remote Zarr with Rarr
+
+```{r}
+zarr_s3 = "https://objects.eodc.eu/e05ab01a9d56408d82ac32d69a5aae2a:sample-data/tutorial_data/cpm_v253/S2B_MSIL1C_20250113T103309_N0511_R108_T32TLQ_20250113T122458.zarr/measurements/reflectance/r60m/b01"
+
+zarr_overview(zarr_s3, as_data_frame = T) |> 
+  mutate(var = sub(zarr_s3, "", path)) |> 
+  select(var, everything(), -path)  |> View()
+```
+
+
+```{r}
+z_s3 = read_zarr_array(zarr_s3)
+dim(z_s3)
+
+st_as_stars(z_s3) |> plot()
+```

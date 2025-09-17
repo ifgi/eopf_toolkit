@@ -85,7 +85,7 @@ zarr_overview(zarr_array_path = assets_url(items = executed_query$features[[2]],
 --> we get one url for each band in each intem, i.e. everything seperately 
 
 Read Zarr data into arrays (other than trying to download the data locally as in `first_try`)
-here: b2, b3, b4, b8 in 10m resolution for the sixth item since it has the lowest cloud cover
+here: b2, b3, b4, b8 in 10m resolution for the 2nd item since it has the lowest cloud cover
 ```{r}
 #read bands seperately into arrays
 asset_urls <- assets_url(items = executed_query$features[[2]], asset_names = c("B02_10m", "B03_10m", "B04_10m", "B08_10m"))

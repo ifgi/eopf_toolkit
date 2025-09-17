@@ -1,0 +1,118 @@
+---
+title: "Acessing EOPF Sentinel Zarr STAC API with R""
+format: html
+---
+
+
+This time, instead of downloading the data locally, try to read Zarr data directly from the STAC API using the `Rarr` package (as shown in Sharla´s tutorial). 
+Then, create a spatraster of one of the items with `terra` and plot a CIR composite.
+
+```{r}
+#install.packages("BiocManager")
+#BiocManager::install("Rarr")
+
+```
+
+```{r}
+library(rstac)
+library(tidyverse)
+library(Rarr)
+library(stars)
+library(terra)
+library(mapview)
+```
+
+Fixes to the Rarr package (see https://github.com/eopf-toolkit/eopf-tooling-guide/blob/main/docs/tutorials/stac_zarr/R/eopf_zarr.md#coordinates)
+```{r}
+.url_parse_other <- function(url) {
+  parsed_url <- httr::parse_url(url)
+  bucket <- gsub(
+    x = parsed_url$path, pattern = "^/?([[a-z0-9\\:\\.-]*)/.*",
+    replacement = "\\1", ignore.case = TRUE
+  )
+  object <- gsub(
+    x = parsed_url$path, pattern = "^/?([a-z0-9\\:\\.-]*)/(.*)",
+    replacement = "\\2", ignore.case = TRUE
+  )
+  hostname <- paste0(parsed_url$scheme, "://", parsed_url$hostname)
+
+  if (!is.null(parsed_url$port)) {
+    hostname <- paste0(hostname, ":", parsed_url$port)
+  }
+
+  res <- list(
+    bucket = bucket,
+    object = object,
+    region = "auto",
+    hostname = hostname
+  )
+  return(res)
+}
+
+assignInNamespace(".url_parse_other", .url_parse_other, ns = "Rarr")
+```
+
+Get available collections from the STAC API
+```{r}
+stac_source <- stac("https://stac.core.eopf.eodc.eu/")
+collections_query <- collections(stac_source)
+available_collections <- rstac::get_request(collections_query)
+available_collections
+```
+
+Search Sentinel-2 L2A data for Münsterland in 2022 (a year where I found data cloud cover below 80% and reasonable coverage of the area)
+
+```{r}
+search_query <- stac_search(
+    stac_source,
+    collections = "sentinel-2-l2a",
+    datetime = "2022-01-01T00:00:00Z/2022-12-31T23:59:59Z",
+    bbox = c(6.8, 51.8, 7.8, 52.4),
+    limit = 25
+  )
+executed_query <- get_request(search_query)
+executed_query
+executed_query$features[[2]]$properties$`eo:cloud_cover` #check cloud cover of second item
+```
+
+Select and acess assets of 2nd item (4 bands in 10m resolution)
+
+```{r}
+assets_select(items = executed_query$features[[2]], asset_names = c("B02_10m", "B03_10m", "B04_10m", "B08_10m")) #select assets
+assets_url(items = executed_query$features[[2]], asset_names = c("B02_10m", "B03_10m", "B04_10m", "B08_10m")) #get urls
+zarr_overview(zarr_array_path = assets_url(items = executed_query$features[[2]], asset_names = c("B02_10m", "B03_10m", "B04_10m", "B08_10m"))[1]) #get zarr overview of  first asset 
+```
+--> we get one url for each band in each intem, i.e. everything seperately 
+
+Read Zarr data into arrays (other than trying to download the data locally as in `first_try`)
+here: b2, b3, b4, b8 in 10m resolution for the sixth item since it has the lowest cloud cover
+```{r}
+#read bands seperately into arrays
+asset_urls <- assets_url(items = executed_query$features[[2]], asset_names = c("B02_10m", "B03_10m", "B04_10m", "B08_10m"))
+b02_array <- read_zarr_array(asset_urls[1])
+b03_array <- read_zarr_array(asset_urls[2])
+b04_array <- read_zarr_array(asset_urls[3])
+b08_array <- read_zarr_array(asset_urls[4])
+#combine bands into a single array
+s2_array <- abind::abind(b02_array, b03_array, b04_array, b08_array, along = 0)
+dim(s2_array) #check dimensions
+s2_array <- aperm(s2_array, c(2, 3, 1)) #permute dimensions to (y, x, band)
+```
+
+Creating spatraster and plotting a CIR composite (NIR, R, G) with terra
+```{r}
+#convert to terra spatraster, using epsg4326 since the bbox is obviously given in lon/lat
+s2_extent  <- ext(executed_query$features[[2]]$bbox[1],executed_query$features[[2]]$bbox[3],executed_query$features[[2]]$bbox[2],executed_query$features[[2]]$bbox[4])
+s2_terra <- rast(s2_array, crs = "EPSG:4326", extent = s2_extent)
+s2_terra
+
+plotRGB(s2_terra, r = 4, g = 3, b = 2, stretch = "lin")
+
+```
+--> that is something, that at least shows muenster on the western edge of the image. but when viewing in qgis on top of openstreetmap basemap it seems slightly off.
+
+
+export as geotiff
+```{r}
+writeRaster(s2_terra, filename = "s2_muensterland_2022.tif", overwrite=TRUE)
+```

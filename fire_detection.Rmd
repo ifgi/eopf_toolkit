@@ -1,0 +1,83 @@
+---
+title: "Fire Detection"
+---
+
+``` {r}
+install.packages("rstac")
+install.packages("terra")
+```
+
+``` {r}
+library(rstac)
+library(terra)
+```
+
+# Connect to the EOPF Sample Service STAC API
+``` {r}
+stac_source <- stac("https://stac.core.eopf.eodc.eu/")
+
+stac_source |>
+  get_request()
+```
+
+
+# Search AOI
+Fire: Varibobi (Attica), Greece — June 2025
+Region: North of Athens, Attica
+
+``` {r}
+collections_query <- stac_source |>
+  rstac::collections()
+
+collections_query
+
+```
+
+```{r}
+available_collections <- rstac::get_request(collections_query)
+available_collections
+```
+
+```{r}
+stac_query <- rstac::stac_search(
+  q = stac_source,
+  collections = "sentinel-2-l2a",
+  bbox = c(25.70, 38.10, 26.40, 38.50),
+  datetime = "2025-06-22T01:00:00Z/2025-06-30T05:00:00Z",
+  limit = 999
+)
+
+executed_stac_query <- rstac::get_request(stac_query)
+executed_stac_query
+```
+
+# Downlaod assests 
+```{r}
+it <- executed_stac_query$features[[1]]
+rstac::assets_download(it,
+ "B02_10m",
+ overwrite = TRUE,
+  output_dir = tempdir())
+
+```
+
+```{r}
+list.files(tempdir(), recursive = TRUE, full.names = TRUE)
+
+```
+
+
+```{r}
+output_file <- file.path(
+  tempdir(),
+  "e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/28/products/cpm_v256/S2B_MSIL2A_20250628T090559_N0511_R050_T35SMC_20250628T102339.zarr")
+```
+
+```{r}
+library(fs)
+
+# List directory structure
+dir_tree(output_file)
+
+```
+

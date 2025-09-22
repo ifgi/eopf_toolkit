@@ -1,5 +1,5 @@
 ---
-title: "Acessing EOPF Sentinel Zarr STAC API with R""
+title: "Accessing EOPF Sentinel Zarr STAC API with R""
 format: html
 ---
 

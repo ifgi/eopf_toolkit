@@ -5,11 +5,52 @@ title: "Fire Detection"
 ``` {r}
 install.packages("rstac")
 install.packages("terra")
+install.packages("BiocManager")
+install.packages("tidyverse")
+install.packages("stars")
+```
+
+```{r}
+BiocManager::install("Rarr")
 ```
 
 ``` {r}
 library(rstac)
 library(terra)
+library(tidyverse)
+library(Rarr)
+library(stars)
+library(fs)
+```
+
+```{r}
+.url_parse_other <- function(url) {
+  parsed_url <- httr::parse_url(url)
+  bucket <- gsub(
+    x = parsed_url$path, pattern = "^/?([[a-z0-9\\:\\.-]*)/.*",
+    replacement = "\\1", ignore.case = TRUE
+  )
+  object <- gsub(
+    x = parsed_url$path, pattern = "^/?([a-z0-9\\:\\.-]*)/(.*)",
+    replacement = "\\2", ignore.case = TRUE
+  )
+  hostname <- paste0(parsed_url$scheme, "://", parsed_url$hostname)
+
+  if (!is.null(parsed_url$port)) {
+    hostname <- paste0(hostname, ":", parsed_url$port)
+  }
+
+  res <- list(
+    bucket = bucket,
+    object = object,
+    region = "auto",
+    hostname = hostname
+  )
+  return(res)
+}
+
+assignInNamespace(".url_parse_other", .url_parse_other, ns = "Rarr")
+
 ```
 
 # Connect to the EOPF Sample Service STAC API
@@ -51,6 +92,7 @@ executed_stac_query <- rstac::get_request(stac_query)
 executed_stac_query
 ```
 
+
 # Downlaod assests 
 ```{r}
 it <- executed_stac_query$features[[1]]
@@ -62,7 +104,7 @@ rstac::assets_download(it,
 ```
 
 ```{r}
-list.files(tempdir(), recursive = TRUE, full.names = TRUE)
+list.files(tempdir(), full.names = TRUE)
 
 ```
 
@@ -71,13 +113,40 @@ list.files(tempdir(), recursive = TRUE, full.names = TRUE)
 output_file <- file.path(
   tempdir(),
   "e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/28/products/cpm_v256/S2B_MSIL2A_20250628T090559_N0511_R050_T35SMC_20250628T102339.zarr")
+  #e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/28/products/cpm_v256/S2B_MSIL2A_20250628T090559_N0511_R050_T35SMC_20250628T102339.zarr/measurements/reflectance/r10m/b02
 ```
 
 ```{r}
-library(fs)
-
 # List directory structure
 dir_tree(output_file)
 
 ```
 
+```{r}
+zarr_overview(output_file)
+```
+
+# Try to read it using URL
+```{r}
+s2_l2a_product <- executed_stac_query$features[[1]] |>
+  assets_select(asset_names = "product")
+
+s2_l2a_product_url2 <- s2_l2a_product |>
+  assets_url()
+
+s2_l2a_product_url2
+```
+
+```{r}
+derive_store_array <- function(store, product_url) {
+  store |>
+    mutate(array = str_remove(path, product_url)) |>
+    relocate(array, .before = path)
+}
+
+zarr_store <- s2_l2a_product_url2 |>
+  zarr_overview(as_data_frame = TRUE) |>
+  derive_store_array(s2_l2a_product_url2)
+
+zarr_store
+```

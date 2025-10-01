@@ -1,20 +1,20 @@
 ---
-title: "Fire Detection"
+title: "Read, Access, and Download EOPF ZARR Products"
 ---
 
-``` {r}
-install.packages("rstac")
-install.packages("terra")
-install.packages("BiocManager")
-install.packages("tidyverse")
-install.packages("stars")
+```{r}
+# install.packages("rstac")
+# install.packages("terra")
+# install.packages("BiocManager")
+# install.packages("tidyverse")
+# install.packages("stars")
 ```
 
 ```{r}
-BiocManager::install("Rarr")
+# BiocManager::install("Rarr")
 ```
 
-``` {r}
+```{r message=FALSE, warning=FALSE}
 library(rstac)
 library(terra)
 library(tidyverse)
@@ -54,19 +54,19 @@ assignInNamespace(".url_parse_other", .url_parse_other, ns = "Rarr")
 ```
 
 # Connect to the EOPF Sample Service STAC API
-``` {r}
+
+```{r}
 stac_source <- stac("https://stac.core.eopf.eodc.eu/")
 
 stac_source |>
   get_request()
 ```
 
-
 # Search AOI
-Fire: Varibobi (Attica), Greece — June 2025
-Region: North of Athens, Attica
 
-``` {r}
+Fire: Varibobi (Attica), Greece — June 2025 Region: North of Athens, Attica
+
+```{r}
 collections_query <- stac_source |>
   rstac::collections()
 
@@ -79,65 +79,103 @@ available_collections <- rstac::get_request(collections_query)
 available_collections
 ```
 
-```{r}
-stac_query <- rstac::stac_search(
+## This is our AOI in Greece and it is not working
+
+It does not work for downladed ZARR, and using the product URL.
+
+```{r error=TRUE}
+
+# Acccess the data using rstac
+stac_query1 <- rstac::stac_search(
   q = stac_source,
   collections = "sentinel-2-l2a",
   bbox = c(25.70, 38.10, 26.40, 38.50),
-  datetime = "2025-06-22T01:00:00Z/2025-06-30T05:00:00Z",
+  datetime = "2025-06-03T01:00:00Z/2025-06-30T05:00:00Z",
   limit = 999
 )
 
-executed_stac_query <- rstac::get_request(stac_query)
-executed_stac_query
-```
+executed_stac_query1 <- rstac::get_request(stac_query1)
 
-
-# Downlaod assests 
-```{r}
-it <- executed_stac_query$features[[1]]
-rstac::assets_download(it,
- "B02_10m",
+# Download assest 
+item1 <- executed_stac_query1$features[[1]]
+rstac::assets_download(item1,
+ "B08_10m",
  overwrite = TRUE,
   output_dir = tempdir())
 
-```
-
-```{r}
-list.files(tempdir(), full.names = TRUE)
-
-```
-
-
-```{r}
-output_file <- file.path(
+# Access the downloaded ZARR 
+output_file1 <- file.path(
   tempdir(),
   "e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/28/products/cpm_v256/S2B_MSIL2A_20250628T090559_N0511_R050_T35SMC_20250628T102339.zarr")
-  #e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/28/products/cpm_v256/S2B_MSIL2A_20250628T090559_N0511_R050_T35SMC_20250628T102339.zarr/measurements/reflectance/r10m/b02
+
+zarr_overview(output_file1)
 ```
 
-```{r}
-# List directory structure
-dir_tree(output_file)
+```{r error=TRUE}
+# Try to read it using product URL
+s2_l2a_product <- executed_stac_query1$features[[1]] |>
+  assets_select(asset_names = "product")
 
+s2_l2a_product_url1 <- s2_l2a_product |>
+  assets_url()
+
+s2_l2a_product_url1
+
+derive_store_array <- function(store, product_url) {
+  store |>
+    mutate(array = str_remove(path, product_url)) |>
+    relocate(array, .before = path)
+}
+
+zarr_store <- s2_l2a_product_url1 |>
+  zarr_overview(as_data_frame = TRUE) |>
+  derive_store_array(s2_l2a_product_url1)
+
+zarr_store
 ```
 
-```{r}
-zarr_overview(output_file)
+## This AOI from this example "https://eopf-toolkit.github.io/eopf-101/61_sardinia_s2_tfci.html"
+
+It worked when try to read it using product_url but it's not working when try to read the downladed ZARR
+
+```{r error=TRUE}
+# Acccess the data usibng rstac
+stac_query2 <- rstac::stac_search(
+  q = stac_source,
+  collections = "sentinel-2-l2a",
+  bbox = c(8.847198,40.193395,8.938865,40.241895),
+  datetime = "2025-06-03T01:00:00Z/2025-06-04T05:00:00Z",
+  limit = 999
+)
+
+executed_stac_query2 <- rstac::get_request(stac_query2)
+
+# Download assest 
+item2 <- executed_stac_query2$features[[1]]
+rstac::assets_download(item2,
+ "B08_10m",
+ overwrite = TRUE,
+  output_dir = tempdir())
+
+# Access the downloaded ZARR 
+output_file2 <- file.path(
+  tempdir(),
+  "e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr")
+
+zarr_overview(output_file2)
 ```
 
-# Try to read it using URL
-```{r}
-s2_l2a_product <- executed_stac_query$features[[1]] |>
+```{r error=TRUE}
+
+# Try to read it using product UR
+s2_l2a_product <- executed_stac_query2$features[[1]] |>
   assets_select(asset_names = "product")
 
 s2_l2a_product_url2 <- s2_l2a_product |>
   assets_url()
 
 s2_l2a_product_url2
-```
 
-```{r}
 derive_store_array <- function(store, product_url) {
   store |>
     mutate(array = str_remove(path, product_url)) |>

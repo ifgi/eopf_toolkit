@@ -34,7 +34,6 @@ array_meta = jsonlite::read_json(file.path(z1, ".zarray"))
 array_meta$shape
 ```
 
-
 Convert to a stars object
 ```{r}
 library(stars)
@@ -50,44 +49,96 @@ Next: Recognise the dimensions as stars coordinates...
 
 ## Remote Zarr with Rarr
 
+..using a Zarr archive stored on S3, registered in a STAC catalog and hosted by EODC.
+
 ```{r}
 # get meta data for all assets in the zarr archive!
 zarr_s3 = "https://objects.eodc.eu/e05ab01a9d56408d82ac32d69a5aae2a:sample-data/tutorial_data/cpm_v253/S2B_MSIL1C_20250113T103309_N0511_R108_T32TLQ_20250113T122458.zarr"
 
 zarr_overview(zarr_s3, as_data_frame = T) |> 
   mutate(var = sub(zarr_s3, "", path)) |> 
-  select(var, everything(), -path)  |> View()
+  select(var, everything(), -path) 
+
 ```
 
+Read the attributes of the Zarr archive
+```{r}
+attr_s3 = jsonlite::read_json(file.path(zarr_s3, ".zattrs"))
+```
 
+Read data from a single band array and its coordinates
 ```{r}
 # This time point to a single band asset directly!
-zarr_s3_b01 = "https://objects.eodc.eu/e05ab01a9d56408d82ac32d69a5aae2a:sample-data/tutorial_data/cpm_v253/S2B_MSIL1C_20250113T103309_N0511_R108_T32TLQ_20250113T122458.zarr/measurements/reflectance/r60m/b01"
-
+zarr_s3_b01 = paste0(zarr_s3, "/measurements/reflectance/r60m/b01")
 zarr_overview(zarr_s3_b01)
-```
 
+z_s3 = read_zarr_array(zarr_s3_b01)
 
-```{r}
-z_s3 = read_zarr_array(zarr_s3_b01, index=list(1:300, 1:300))
-dim(z_s3)
+zarr_s3_x = paste0(zarr_s3, "/conditions/mask/detector_footprint/r60m/x") |> 
+  read_zarr_array()
+zarr_s3_y = paste0(zarr_s3, "/conditions/mask/detector_footprint/r60m/y") |> 
+  read_zarr_array()
 ```
 
 Make a stars object
 ```{r}
-zz = st_as_stars(z_s3)
-plot(zz)
+# read CRS from attributes
+zarr_crs = attr_s3$other_metadata$horizontal_CRS_code
 
-# get info from file name
-utm_zone = 32
-zarr_crs = st_crs(as.integer(paste0(258, utm_zone)))
+# band name
 var = "B01"
+
+# read 
 zz = st_as_stars(z_s3) |> 
   st_set_crs(zarr_crs) |> 
-  st_set_dimensions(1:2, names = c("X","Y")) |> 
+  st_set_dimensions(1, names = "X", values = zarr_s3_x) |> 
+  st_set_dimensions(2, names = "Y", values = zarr_s3_y) |> 
   setNames(var)
 zz
 plot(zz, axes = TRUE)
 ```
 
+all in one go
+
+```{r}
+
+st_read_zarr_band = function(path, var, res, ...){
+  # stopifnot valid zarr url...
+  attr_s3 = jsonlite::read_json(file.path(path, ".zattrs"))
+  zarr_crs = attr_s3$other_metadata$horizontal_CRS_code
+  
+  # attr_s3$stac_discovery$properties$`eopf:resolutions`
+  res_char = switch(as.character(res),
+    "10" = "r10m",
+    "20" = "r20m", 
+    "60" = "r60m",
+    stop("Resolution must be one of 10, 20, or 60.")
+  )
+
+  # ...: make use of index arguments of read_zarr_array??
+  z_s3 = file.path(path, "measurements/reflectance", res_char, var) |> 
+    read_zarr_array(...)
+  zarr_s3_x = file.path(path, "conditions/mask/detector_footprint", res_char, "x") |> 
+    read_zarr_array(...)
+  zarr_s3_y = file.path(path, "conditions/mask/detector_footprint", res_char, "y") |> 
+    read_zarr_array(...)
+  
+  st_as_stars(z_s3) |> 
+    st_set_crs(st_crs(zarr_crs)) |> 
+    st_set_dimensions(1, names = "X", values = zarr_s3_x) |> 
+    st_set_dimensions(2, names = "Y", values = zarr_s3_y) |> 
+    setNames(var)
+}
+
+```
+test...
+
 ## Read and combine multiple bands??
+
+```{r}
+(b01 = st_read_zarr_band(zarr_s3, "b01", 60))
+(b09 = st_read_zarr_band(zarr_s3, "b09", 60))
+
+c(b01, b09) |> merge() |> plot(axes = TRUE)
+
+```

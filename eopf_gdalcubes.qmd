@@ -1,22 +1,25 @@
 ---
 title: "Creating a raster cube from STAC items from EOPF using rstac and gdalcubes"
 format: html
+author: "Christian" 
 ---
 
-The following currently works under Linux but not under Windows.
+This currently works for Linux but not for Windows.
 
-```	{r}
+```{r}
 library(rstac)
 library(gdalcubes)
 library(sf)
 ```
 
-Create image collection from STAC items using `gdalcubes::stac_image_collection()`
+### Create image collection from STAC items 
+-> using `gdalcubes::stac_image_collection()`
 
 ```{r}	
 # I will be switching to summer 2025 to get more data 
 # unsing a bbox roughly for Münsterland
 # for the stac request, I need the bbox in WGS84
+# we limit the no of results to 2 for testing purposes
 bbox_wgs84 <- st_bbox(c(xmin = 6.55, xmax = 7.8, ymin = 51.8, ymax = 52.4), crs = st_crs(4326))
 bbox_utm =st_transform(bbox_wgs84, "EPSG:32632")
 
@@ -36,8 +39,8 @@ f = function(href) {
   return(paste0("ZARR:\"/vsicurl/", gsub(".zarr/", ".zarr\"/", href)))
 }
 
-items$features[[1]]$assets$B02_10m$href #--> das ist da, was man aus stack rauskriegt, man will aber -damit GDAL das versteht- die URL zum eigentlichen ZARR file; siehe tutorial: https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/
-# die obige Funktion ersetze alle hrefs durch eine, URL, die dahin führtd -> das macht sie für alle assets, weil sie als url_fun Argument der Funktion stac_image_collection übergeben wird (siehe unten)
+items$features[[1]]$assets$B02_10m$href #--> this is what you get from stac, but what you want - in order for GDAL to understand it- is the URL to the .zarr file; see  tutorial: https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/
+# the function above replaces the href by one that directs directly there --> since you can give this as an argument to stac_image_collection(), it will be applied to all assets
 
 
 ### create image collection from stac items
@@ -47,7 +50,11 @@ s2_collection = stac_image_collection(items$features, srs = "EPSG:32632", asset_
 
 s2_collection
 
-# Create a cube view, here with 100m spatial resolution and daily time steps, aggregating with median
+
+```
+### Create a cube view
+-> here with 100m spatial resolution and daily time steps, aggregating with median
+```{r}
 v = cube_view(srs="EPSG:32632", dx=100, dy=100, dt="P1D",
               aggregation="median",
               extent=list(t0 = "2025-06-01", t1 = "2025-06-30",
@@ -55,13 +62,15 @@ v = cube_view(srs="EPSG:32632", dx=100, dy=100, dt="P1D",
                           top=bbox_utm["ymax"], bottom=bbox_utm["ymin"]))
 
 v
-
-
-#create cube (this is where something breaks under Windows)
+```
+### Create cube 
+-> (this is what does not under Windows)
+```{r}	
 raster_cube(s2_collection, v) |>
   select_bands(c("B02_10m","B03_10m","B04_10m")) |>
   reduce_time(c("median(B02_10m)", "median(B03_10m)", "median(B04_10m)")) |>
   plot(rgb = 3:1, zlim = c(0,3000))
 
-
 ```
+In addition to the warning displayed in the html, I get a warning in the console: 
+"[WARNING] 2 out of 4 chunks have repoprted errors / incompleteness. This is most likely caused by failed computations and/or inaccessible image data. Please check detailed output or run with debug option again."

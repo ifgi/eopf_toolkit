@@ -71,7 +71,6 @@ collections_query <- stac_source |>
   rstac::collections()
 
 collections_query
-
 ```
 
 ```{r}
@@ -156,6 +155,10 @@ rstac::assets_download(item2,
  "B08_10m",
  overwrite = TRUE,
   output_dir = tempdir())
+rstac::assets_download(item2,
+ "product_metadata",
+ overwrite = TRUE,
+ output_dir = asset_dir)
 
 # Access the downloaded ZARR 
 output_file2 <- file.path(

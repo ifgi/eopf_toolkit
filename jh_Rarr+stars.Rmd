@@ -47,14 +47,42 @@ Next: Recognise the dimensions as stars coordinates...
 
 ```
 
-## Remote Zarr with Rarr
+## Remote Zarr with stars (directly)
+
+> not successful yet.
 
 ..using a Zarr archive stored on S3, registered in a STAC catalog and hosted by EODC.
 
 ```{r}
-# get meta data for all assets in the zarr archive!
 zarr_s3 = "https://objects.eodc.eu/e05ab01a9d56408d82ac32d69a5aae2a:sample-data/tutorial_data/cpm_v253/S2B_MSIL1C_20250113T103309_N0511_R108_T32TLQ_20250113T122458.zarr"
+```
 
+```{r, error=T}
+vsi_url = paste0("/vsicurl/", zarr_s3)
+
+sf::gdal_utils(source = vsi_url)
+read_stars(vsi_url)
+read_mdim(vsi_url)
+
+terra::rast(vsi_url)
+```
+
+```{r, error=T}
+vsi_url = paste0("ZARR:/vsicurl/", "https://objects.eodc.eu/e05ab01a9d56408d82ac32d69a5aae2a:sample-data/tutorial_data/cpm_v253/S2B_MSIL1C_20250113T103309_N0511_R108_T32TLQ_20250113T122458.zarr")
+
+sf::gdal_utils(source = vsi_url)
+read_stars(vsi_url)
+read_mdim(vsi_url, variable = "/quality/mask/r60m/b09")
+
+terra::rast(vsi_url)
+```
+
+## Remote Zarr with Rarr
+
+> construct a stars object from meta data
+
+```{r}
+# get meta data for all assets in the zarr archive!
 zarr_overview(zarr_s3, as_data_frame = T) |> 
   mutate(var = sub(zarr_s3, "", path)) |> 
   select(var, everything(), -path) 
@@ -62,6 +90,15 @@ zarr_overview(zarr_s3, as_data_frame = T) |>
 ```
 
 Read the attributes of the Zarr archive
+
+These both do not work...
+```{r, error=T}
+Rarr::read_zattrs(zarr_s3)
+
+Rarr::read_zattrs(file.path(zarr_s3, ".zattrs"))
+```
+
+... so read json directly:
 ```{r}
 attr_s3 = jsonlite::read_json(file.path(zarr_s3, ".zattrs"))
 ```
@@ -80,10 +117,10 @@ zarr_s3_y = paste0(zarr_s3, "/conditions/mask/detector_footprint/r60m/y") |>
   read_zarr_array()
 ```
 
-Make a stars object
+Construct a stars object
 ```{r}
 # read CRS from attributes
-zarr_crs = attr_s3$other_metadata$horizontal_CRS_code
+zarr_crs = attr_s3$stac_discovery$properties$`proj:epsg`
 
 # band name
 var = "B01"
@@ -98,14 +135,13 @@ zz
 plot(zz, axes = TRUE)
 ```
 
-all in one go
-
+all in one function:
 ```{r}
 
 st_read_zarr_band = function(path, var, res, ...){
   # stopifnot valid zarr url...
   attr_s3 = jsonlite::read_json(file.path(path, ".zattrs"))
-  zarr_crs = attr_s3$other_metadata$horizontal_CRS_code
+  zarr_crs = attr_s3$stac_discovery$properties$`proj:epsg`
   
   # attr_s3$stac_discovery$properties$`eopf:resolutions`
   res_char = switch(as.character(res),

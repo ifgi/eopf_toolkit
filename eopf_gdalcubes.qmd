@@ -2,6 +2,7 @@
 title: "Creating a raster cube from STAC items from EOPF using rstac and gdalcubes"
 format: html
 author: "Christian" 
+self-contained: true
 ---
 
 This currently works for Linux but not for Windows.
@@ -64,7 +65,7 @@ v = cube_view(srs="EPSG:32632", dx=100, dy=100, dt="P1D",
 v
 ```
 ### Create cube 
--> (this is what does not under Windows)
+-> (this is what does not work under Windows)
 ```{r}	
 raster_cube(s2_collection, v) |>
   select_bands(c("B02_10m","B03_10m","B04_10m")) |>

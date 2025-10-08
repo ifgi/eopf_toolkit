@@ -2,7 +2,10 @@
 title: "Accessing Zarr data from STAC (?) using Rarr (??)"
 author: "Johannes Heisig"
 date: "`r Sys.Date()`"
-output: html_document
+output: github_document
+format:
+  html:
+    embed-resources: true
 ---
 
 ## Local Zarr with Rarr

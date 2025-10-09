@@ -58,23 +58,32 @@ zarr_s3 = "https://objects.eodc.eu/e05ab01a9d56408d82ac32d69a5aae2a:sample-data/
 ```
 
 ```{r, error=T}
-vsi_url = paste0("/vsicurl/", zarr_s3)
+vsi_url = paste0("ZARR:\"/vsicurl/", zarr_s3, "\"")
 
-sf::gdal_utils(source = vsi_url)
-read_stars(vsi_url)
+sf::gdal_utils("mdiminfo", source = vsi_url)
+read_stars(vsi_url, 4:6)
 read_mdim(vsi_url)
 
-terra::rast(vsi_url)
+r = terra::rast(vsi_url)
 ```
 
 ```{r, error=T}
-vsi_url = paste0("ZARR:/vsicurl/", "https://objects.eodc.eu/e05ab01a9d56408d82ac32d69a5aae2a:sample-data/tutorial_data/cpm_v253/S2B_MSIL1C_20250113T103309_N0511_R108_T32TLQ_20250113T122458.zarr")
+vsi_url = paste0("ZARR:/vsicurl/", '"https://objects.eodc.eu/e05ab01a9d56408d82ac32d69a5aae2a:sample-data/tutorial_data/cpm_v253/S2B_MSIL1C_20250113T103309_N0511_R108_T32TLQ_20250113T122458.zarr"')
 
-sf::gdal_utils(source = vsi_url)
-read_stars(vsi_url)
-read_mdim(vsi_url, variable = "/quality/mask/r60m/b09")
+sf::gdal_utils("mdiminfo", source = vsi_url)
+read_stars(vsi_url, driver = "ZARR") # errors
+r = read_stars(paste(vsi_url, "/measurements/reflectance/r10m/b02", sep = ":"))
+plot(r)
+read_mdim(vsi_url) # errors
+read_mdim(vsi_url, "?") # query array names
+m = read_mdim(vsi_url, variable = "/measurements/reflectance/r10m/b02")
+system.time(plot(m)) # slow: only here the full array is downloaded
 
-terra::rast(vsi_url)
+tr = terra::rast(vsi_url)
+names(tr) # has non-unique names, e.g. three times "b02"
+tr = terra::rast(vsi_url, "/measurements/reflectance/r10m/b02")
+plot(tr)
+# slow: only here the full array is downloaded
 ```
 
 ## Remote Zarr with Rarr

@@ -73,15 +73,20 @@ vsi_url = paste0("ZARR:/vsicurl/", '"https://objects.eodc.eu/e05ab01a9d56408d82a
 sf::gdal_utils("mdiminfo", source = vsi_url)
 read_stars(vsi_url, driver = "ZARR") # errors
 r = read_stars(paste(vsi_url, "/measurements/reflectance/r10m/b02", sep = ":"))
-plot(r)
+st_crs(r) # NA: empty
+st_crs(r) = 'EPSG:32632'
+plot(r, axes = TRUE)
+library(mapview)
+mapview(r)
 read_mdim(vsi_url) # errors
 read_mdim(vsi_url, "?") # query array names
-m = read_mdim(vsi_url, variable = "/measurements/reflectance/r10m/b02")
+m = read_mdim(vsi_url, "/measurements/reflectance/r10m/b02", proxy = TRUE)
 system.time(plot(m)) # slow: only here the full array is downloaded
 
 tr = terra::rast(vsi_url)
 names(tr) # has non-unique names, e.g. three times "b02"
 tr = terra::rast(vsi_url, "/measurements/reflectance/r10m/b02")
+crs(tr) # empty
 plot(tr)
 # slow: only here the full array is downloaded
 ```
@@ -94,8 +99,7 @@ plot(tr)
 # get meta data for all assets in the zarr archive!
 zarr_overview(zarr_s3, as_data_frame = T) |> 
   mutate(var = sub(zarr_s3, "", path)) |> 
-  select(var, everything(), -path) 
-
+  select(var, everything(), -path)
 ```
 
 Read the attributes of the Zarr archive

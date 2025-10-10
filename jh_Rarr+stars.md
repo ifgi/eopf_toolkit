@@ -1,16 +1,25 @@
-# Accessing Zarr data from STAC (?) using Rarr (??)
+# Accessing Zarr data from STAC using Rarr and stars
 Johannes Heisig
-2025-10-08
+2025-10-10
+
+- [Local Zarr with Rarr](#local-zarr-with-rarr)
+- [Remote Zarr with stars (directly)](#remote-zarr-with-stars-directly)
+- [Remote Zarr with Rarr](#remote-zarr-with-rarr)
+- [Read and combine multiple bands??](#read-and-combine-multiple-bands)
+
+``` r
+#remotes::install_github("sharlagelfand/Rarr")
+library(Rarr)
+library(stars)
+library(dplyr)
+library(jsonlite)
+```
 
 ## Local Zarr with Rarr
 
 Read the sample Zarr array provided with the Rarr package
 
 ``` r
-#remotes::install_github("sharlagelfand/Rarr")
-library(Rarr)
-library(dplyr)
-
 # Using a local file provided with the package
 ## This array has 3 dimensions
 z1 <- system.file("extdata", "zarr_examples", "row-first",
@@ -21,7 +30,7 @@ zarr_overview(z1)
 ```
 
     Type: Array
-    Path: /home/jheisig/R/x86_64-pc-linux-gnu-library/4.3/Rarr/extdata/zarr_examples/row-first/int32.zarr
+    Path: /home/jheisig/R/x86_64-pc-linux-gnu-library/4.5/Rarr/extdata/zarr_examples/row-first/int32.zarr
     Shape: 30 x 20 x 10
     Chunk Shape: 10 x 10 x 5
     No. of Chunks: 12 (3 x 2 x 2)
@@ -40,8 +49,7 @@ dim(z1_full)
 Check the metadata of the Zarr array
 
 ``` r
-library(jsonlite)
-array_meta = jsonlite::read_json(file.path(z1, ".zarray"))
+array_meta = read_json(file.path(z1, ".zarray"))
 array_meta$shape
 ```
 
@@ -55,14 +63,6 @@ array_meta$shape
     [1] 10
 
 Convert to a stars object
-
-``` r
-library(stars)
-```
-
-    Loading required package: sf
-
-    Linking to GEOS 3.12.2, GDAL 3.9.3, PROJ 9.4.1; sf_use_s2() is TRUE
 
 ``` r
 (st_z1 = st_as_stars(z1_full))
@@ -82,97 +82,119 @@ library(stars)
 plot(st_z1, breaks = "equal")
 ```
 
-![](jh_Rarr+stars_files/figure-commonmark/unnamed-chunk-3-1.png)
+![](jh_Rarr+stars_files/figure-commonmark/unnamed-chunk-4-1.png)
 
-Next: Recognise the dimensions as stars coordinates…
-
-``` r
-#(st_z1 = st_as_stars(z1_full))
-```
+Next step: Recognise the dimensions as stars coordinates…
 
 ## Remote Zarr with stars (directly)
-
-> not successful yet.
 
 ..using a Zarr archive stored on S3, registered in a STAC catalog and
 hosted by EODC.
 
+> Successful now with correct `"ZARR:/vsicurl/"` URL prefix for GDAL.
+
 ``` r
 zarr_s3 = "https://objects.eodc.eu/e05ab01a9d56408d82ac32d69a5aae2a:sample-data/tutorial_data/cpm_v253/S2B_MSIL1C_20250113T103309_N0511_R108_T32TLQ_20250113T122458.zarr"
+
+vsi_url = paste0("ZARR:/vsicurl/", as_label(zarr_s3)) # needs special quoting
+band_variable = "/measurements/reflectance/r60m/b01"
+
+sf::gdal_utils("mdiminfo", source = vsi_url, quiet = T) |> 
+  fromJSON() |> 
+  names()
 ```
+
+    [1] "type"       "driver"     "name"       "attributes" "groups"    
 
 ``` r
-vsi_url = paste0("/vsicurl/", zarr_s3)
-
-sf::gdal_utils(source = vsi_url)
-read_stars(vsi_url)
+# stars proxy
+r = read_stars(vsi_url, driver = "ZARR") # errors
 ```
 
-    trying to read file: /vsicurl/https://objects.eodc.eu/e05ab01a9d56408d82ac32d69a5aae2a:sample-data/tutorial_data/cpm_v253/S2B_MSIL1C_20250113T103309_N0511_R108_T32TLQ_20250113T122458.zarr
+    NA, 
 
-    Error in eval(expr, envir, enclos): file not found
+    Error in if (is.function(.x) || !np || any(sapply(prefixes, has_prefix, : missing value where TRUE/FALSE needed
 
 ``` r
-read_mdim(vsi_url)
+(r = read_stars(paste(vsi_url, band_variable, sep = ":")))
 ```
 
-    Warning in CPL_read_mdim(file, array_name, options, offset, count, step, : GDAL
-    Error 11: HTTP response code: 404
+    Warning: ignoring unrecognized unit: digital_counts
 
-    Error in eval(expr, envir, enclos): file not found
+    stars object with 2 dimensions and 1 attribute
+    attribute(s), summary of first 1e+05 cells:
+           Min. 1st Qu. Median      Mean 3rd Qu.   Max.
+    b01  0.1299  0.1542 0.1628 0.3541124  0.4304 1.6556
+    dimension(s):
+      from   to offset delta x/y
+    x    1 1830  3e+05    60 [x]
+    y    1 1830  5e+06   -60 [y]
 
 ``` r
-terra::rast(vsi_url)
+system.time(plot(r)) 
 ```
 
-    Warning: HTTP response code: 404 (GDAL error 11)
+    downsample set to 2
 
-    Error: [rast] file does not exist: /vsicurl/https://objects.eodc.eu/e05ab01a9d56408d82ac32d69a5aae2a:sample-data/tutorial_data/cpm_v253/S2B_MSIL1C_20250113T103309_N0511_R108_T32TLQ_20250113T122458.zarr
+![](jh_Rarr+stars_files/figure-commonmark/unnamed-chunk-6-1.png)
+
+       user  system elapsed 
+      1.104   0.064   1.158 
 
 ``` r
-vsi_url = paste0("ZARR:/vsicurl/", "https://objects.eodc.eu/e05ab01a9d56408d82ac32d69a5aae2a:sample-data/tutorial_data/cpm_v253/S2B_MSIL1C_20250113T103309_N0511_R108_T32TLQ_20250113T122458.zarr")
-
-sf::gdal_utils(source = vsi_url)
+# stars mdim
+read_mdim(vsi_url) # errors
 ```
 
-    Warning: There is likely a quoting error of the whole connection string. (GDAL
-    error 1)
+    Error: no array names found
 
 ``` r
-read_stars(vsi_url)
+read_mdim(vsi_url, "?") # query array names
 ```
 
-    Warning: There is likely a quoting error of the whole connection string. (GDAL
-    error 1)
-
-    Warning: There is likely a quoting error of the whole connection string. (GDAL
-    error 1)
-
-    trying to read file: ZARR:/vsicurl/https://objects.eodc.eu/e05ab01a9d56408d82ac32d69a5aae2a:sample-data/tutorial_data/cpm_v253/S2B_MSIL1C_20250113T103309_N0511_R108_T32TLQ_20250113T122458.zarr
-
-    Error in eval(expr, envir, enclos): file not found
+    Error in d[[rd[1]]]: attempt to select less than one element in get1index
 
 ``` r
-read_mdim(vsi_url, variable = "/quality/mask/r60m/b09")
+m = read_mdim(vsi_url, variable = band_variable)
 ```
 
-    Warning: There is likely a quoting error of the whole connection string. (GDAL
-    error 1)
-
-    Error in eval(expr, envir, enclos): file not found
+    Warning: ignoring unrecognized unit: digital_counts
 
 ``` r
-terra::rast(vsi_url)
+system.time(plot(m)) # slow: only here the full array is downloaded 
 ```
 
-    Warning: There is likely a quoting error of the whole connection string. (GDAL
-    error 1)
+    downsample set to 2
 
-    Error: [rast] file does not exist: ZARR:/vsicurl/https://objects.eodc.eu/e05ab01a9d56408d82ac32d69a5aae2a:sample-data/tutorial_data/cpm_v253/S2B_MSIL1C_20250113T103309_N0511_R108_T32TLQ_20250113T122458.zarr
+![](jh_Rarr+stars_files/figure-commonmark/unnamed-chunk-7-1.png)
+
+       user  system elapsed 
+      0.666   0.045   0.713 
+
+``` r
+# terra 
+tr = terra::rast(vsi_url)
+names(tr) # has non-unique names, e.g. three times "b02"
+```
+
+     [1] "b02"   "b03"   "b04"   "b08"   "b02"   "b03"   "b04"   "b08"   "tci_1"
+    [10] "tci_2" "tci_3" "b02"   "b03"   "b04"   "b08"  
+
+``` r
+# the first data array by order is the 10 meter Band 02. Maybe terra then reads all 10m bands plus their masks, which have a different path (.../mask/r10m/b02), but the same name
+
+tr = terra::rast(vsi_url, band_variable)
+system.time(plot(tr)) # slow: only here the full array is downloaded 
+```
+
+![](jh_Rarr+stars_files/figure-commonmark/unnamed-chunk-8-1.png)
+
+       user  system elapsed 
+      2.552   0.071  34.829 
 
 ## Remote Zarr with Rarr
 
-> construct a stars object from meta data
+> … then construct a stars object from meta data
 
 ``` r
 # get meta data for all assets in the zarr archive!
@@ -407,18 +429,20 @@ Rarr::read_zattrs(zarr_s3)
     Error in Rarr::read_zattrs(zarr_s3): The group or array does not contain attributes (.zattrs)
 
 ``` r
-Rarr::read_zattrs(file.path(zarr_s3, ".zattrs"))
+Rarr::read_zattrs(paste0(zarr_s3, "/.zattrs"))
 ```
 
-    Error in Rarr::read_zattrs(file.path(zarr_s3, ".zattrs")): The group or array does not contain attributes (.zattrs)
+    Error in Rarr::read_zattrs(paste0(zarr_s3, "/.zattrs")): The group or array does not contain attributes (.zattrs)
 
 … so read json directly:
 
 ``` r
 attr_s3 = jsonlite::read_json(file.path(zarr_s3, ".zattrs"))
+# the same can be achieved with sf::gdal_utils('mdiminfo', ...)
 ```
 
-Read data from a single band array and its coordinates
+Read data from a single band array and its coordinates. Image is
+flipped!
 
 ``` r
 # This time point to a single band asset directly!
@@ -454,7 +478,8 @@ zarr_crs = attr_s3$stac_discovery$properties$`proj:epsg`
 var = "B01"
 
 # read 
-zz = st_as_stars(z_s3) |> 
+# transpose matrixe before converting to stars
+zz = st_as_stars(z_s3 |> t()) |> 
   st_set_crs(zarr_crs) |> 
   st_set_dimensions(1, names = "X", values = zarr_s3_x) |> 
   st_set_dimensions(2, names = "Y", values = zarr_s3_y) |> 
@@ -464,8 +489,8 @@ zz
 
     stars object with 2 dimensions and 1 attribute
     attribute(s), summary of first 1e+05 cells:
-         Min. 1st Qu. Median   Mean 3rd Qu.  Max.
-    B01  2240    2836   4362 5655.6    7631 16921
+         Min. 1st Qu. Median     Mean 3rd Qu.  Max.
+    B01  2299    2542   2628 4541.124    5304 17556
     dimension(s):
       from   to  offset delta point x/y
     X    1 1830  300030    60 FALSE [x]
@@ -477,7 +502,7 @@ plot(zz, axes = TRUE)
 
     downsample set to 2
 
-![](jh_Rarr+stars_files/figure-commonmark/unnamed-chunk-12-1.png)
+![](jh_Rarr+stars_files/figure-commonmark/unnamed-chunk-13-1.png)
 
 all in one function:
 
@@ -503,7 +528,10 @@ st_read_zarr_band = function(path, var, res, ...){
   zarr_s3_y = file.path(path, "conditions/mask/detector_footprint", res_char, "y") |> 
     read_zarr_array(...)
   
-  st_as_stars(z_s3) |> 
+  # transpose matrixe before converting to stars
+  z_s3 |> 
+    t() |> 
+    st_as_stars() |> 
     st_set_crs(st_crs(zarr_crs)) |> 
     st_set_dimensions(1, names = "X", values = zarr_s3_x) |> 
     st_set_dimensions(2, names = "Y", values = zarr_s3_y) |> 
@@ -521,8 +549,8 @@ test…
 
     stars object with 2 dimensions and 1 attribute
     attribute(s), summary of first 1e+05 cells:
-         Min. 1st Qu. Median   Mean 3rd Qu.  Max.
-    b01  2240    2836   4362 5655.6    7631 16921
+         Min. 1st Qu. Median     Mean 3rd Qu.  Max.
+    b01  2299    2542   2628 4541.124    5304 17556
     dimension(s):
       from   to  offset delta point x/y
     X    1 1830  300030    60 FALSE [x]
@@ -535,7 +563,7 @@ test…
     stars object with 2 dimensions and 1 attribute
     attribute(s), summary of first 1e+05 cells:
          Min. 1st Qu. Median     Mean 3rd Qu.  Max.
-    b09   999    1704   2804 4187.666    5802 16773
+    b09  1086    1715   2079 3430.191    3143 16464
     dimension(s):
       from   to  offset delta point x/y
     X    1 1830  300030    60 FALSE [x]
@@ -547,4 +575,52 @@ c(b01, b09) |> merge() |> plot(axes = TRUE)
 
     downsample set to 3
 
-![](jh_Rarr+stars_files/figure-commonmark/unnamed-chunk-14-1.png)
+![](jh_Rarr+stars_files/figure-commonmark/unnamed-chunk-15-1.png)
+
+``` r
+sessionInfo()
+```
+
+    R version 4.5.1 (2025-06-13)
+    Platform: x86_64-pc-linux-gnu
+    Running under: Ubuntu 24.04.3 LTS
+
+    Matrix products: default
+    BLAS:   /usr/lib/x86_64-linux-gnu/blas/libblas.so.3.12.0 
+    LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.12.0  LAPACK version 3.12.0
+
+    locale:
+     [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+     [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+     [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+     [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+     [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+    [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+    time zone: Europe/Berlin
+    tzcode source: system (glibc)
+
+    attached base packages:
+    [1] stats4    stats     graphics  grDevices utils     datasets  methods  
+    [8] base     
+
+    other attached packages:
+     [1] jsonlite_2.0.0        dplyr_1.1.4           stars_0.6-8          
+     [4] sf_1.0-21             Rarr_1.9.10           DelayedArray_0.28.0  
+     [7] SparseArray_1.2.4     S4Arrays_1.2.1        abind_1.4-8          
+    [10] IRanges_2.36.0        S4Vectors_0.40.2      MatrixGenerics_1.14.0
+    [13] matrixStats_1.5.0     BiocGenerics_0.48.1   Matrix_1.7-4         
+
+    loaded via a namespace (and not attached):
+     [1] rappdirs_0.3.3     generics_0.1.4     class_7.3-23       KernSmooth_2.23-26
+     [5] lattice_0.22-7     paws.common_0.8.5  digest_0.6.37      magrittr_2.0.4    
+     [9] evaluate_1.0.5     grid_4.5.1         fastmap_1.2.0      R.oo_1.27.1       
+    [13] R.utils_2.13.0     e1071_1.7-16       DBI_1.2.3          codetools_0.2-20  
+    [17] httr2_1.2.1        cli_3.6.5          rlang_1.1.6        crayon_1.5.3      
+    [21] units_1.0-0        XVector_0.42.0     R.methodsS3_1.8.2  withr_3.0.2       
+    [25] yaml_2.3.10        tools_4.5.1        parallel_4.5.1     curl_7.0.0        
+    [29] vctrs_0.6.5        R6_2.6.1           proxy_0.4-27       lifecycle_1.0.4   
+    [33] classInt_0.4-11    zlibbioc_1.48.2    pkgconfig_2.0.3    terra_1.8-70      
+    [37] pillar_1.11.1      glue_1.8.0         Rcpp_1.1.0         tidyselect_1.2.1  
+    [41] tibble_3.3.0       xfun_0.53          paws.storage_0.9.0 knitr_1.50        
+    [45] htmltools_0.5.8.1  rmarkdown_2.30     compiler_4.5.1    

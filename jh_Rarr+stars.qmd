@@ -1,18 +1,26 @@
 ---
-title: "Accessing Zarr data from STAC (?) using Rarr (??)"
+title: "Accessing Zarr data from STAC using Rarr and stars"
 author: "Johannes Heisig"
 date: "`r Sys.Date()`"
 format: gfm
+toc: true
+grid:
+  body-width: 900px
 ---
+
+```{r, message=F}
+#remotes::install_github("sharlagelfand/Rarr")
+library(Rarr)
+library(stars)
+library(dplyr)
+library(jsonlite)
+library(mapview)
+```
 
 ## Local Zarr with Rarr
 
 Read the sample Zarr array provided with the Rarr package
 ```{r, message=FALSE, warning=FALSE}
-#remotes::install_github("sharlagelfand/Rarr")
-library(Rarr)
-library(dplyr)
-
 # Using a local file provided with the package
 ## This array has 3 dimensions
 z1 <- system.file("extdata", "zarr_examples", "row-first",
@@ -21,7 +29,6 @@ z1 <- system.file("extdata", "zarr_examples", "row-first",
 )
 zarr_overview(z1)
 
-
 ## read the entire array
 z1_full = read_zarr_array(zarr_array_path = z1)
 dim(z1_full)
@@ -29,77 +36,71 @@ dim(z1_full)
 
 Check the metadata of the Zarr array
 ```{r}
-library(jsonlite)
-array_meta = jsonlite::read_json(file.path(z1, ".zarray"))
+array_meta = read_json(file.path(z1, ".zarray"))
 array_meta$shape
 ```
 
 Convert to a stars object
 ```{r}
-library(stars)
 (st_z1 = st_as_stars(z1_full))
 plot(st_z1, breaks = "equal")
 ```
 
-Next: Recognise the dimensions as stars coordinates...
-```{r}
-#(st_z1 = st_as_stars(z1_full))
-
-```
+Next step: Recognise the dimensions as stars coordinates...
 
 ## Remote Zarr with stars (directly)
 
-> not successful yet.
-
 ..using a Zarr archive stored on S3, registered in a STAC catalog and hosted by EODC.
+
+> Successful now with correct `"ZARR:/vsicurl/"` URL prefix for GDAL.
 
 ```{r}
 zarr_s3 = "https://objects.eodc.eu/e05ab01a9d56408d82ac32d69a5aae2a:sample-data/tutorial_data/cpm_v253/S2B_MSIL1C_20250113T103309_N0511_R108_T32TLQ_20250113T122458.zarr"
+
+vsi_url = paste0("ZARR:/vsicurl/", as_label(zarr_s3)) # needs special quoting
+band_variable = "/measurements/reflectance/r60m/b01"
+
+sf::gdal_utils("mdiminfo", source = vsi_url, quiet = T) |> 
+  fromJSON() |> 
+  names()
 ```
 
 ```{r, error=T}
-vsi_url = paste0("ZARR:\"/vsicurl/", zarr_s3, "\"")
+# stars proxy
+r = read_stars(vsi_url, driver = "ZARR") # errors
+(r = read_stars(paste(vsi_url, band_variable, sep = ":")))
+system.time(plot(r, axes = TRUE)) 
 
-sf::gdal_utils("mdiminfo", source = vsi_url)
-read_stars(vsi_url, 4:6)
-read_mdim(vsi_url)
-
-r = terra::rast(vsi_url)
-```
-
-```{r, error=T}
-vsi_url = paste0("ZARR:/vsicurl/", '"https://objects.eodc.eu/e05ab01a9d56408d82ac32d69a5aae2a:sample-data/tutorial_data/cpm_v253/S2B_MSIL1C_20250113T103309_N0511_R108_T32TLQ_20250113T122458.zarr"')
-
-sf::gdal_utils("mdiminfo", source = vsi_url)
-read_stars(vsi_url, driver = "ZARR") # errors
-r = read_stars(paste(vsi_url, "/measurements/reflectance/r10m/b02", sep = ":"))
 st_crs(r) # NA: empty
 st_crs(r) = 'EPSG:32632'
-plot(r, axes = TRUE)
-library(mapview)
 mapview(r)
+```
+```{r, error=T}
 read_mdim(vsi_url) # errors
 read_mdim(vsi_url, "?") # query array names
 m = read_mdim(vsi_url, "/measurements/reflectance/r10m/b02", proxy = TRUE)
 system.time(plot(m)) # slow: only here the full array is downloaded
+```
 
+```{r, error=T}
+# terra 
 tr = terra::rast(vsi_url)
 names(tr) # has non-unique names, e.g. three times "b02"
-tr = terra::rast(vsi_url, "/measurements/reflectance/r10m/b02")
-crs(tr) # empty
-plot(tr)
-# slow: only here the full array is downloaded
+# the first data array by order is the 10 meter Band 02. Maybe terra then reads all 10m bands plus their masks, which have a different path (.../mask/r10m/b02), but the same name
+
+tr = terra::rast(vsi_url, band_variable)
+system.time(plot(tr)) # slow: only here the full array is downloaded 
 ```
 
 ## Remote Zarr with Rarr
 
-> construct a stars object from meta data
+> ... then construct a stars object from meta data
 
 ```{r}
 # get meta data for all assets in the zarr archive!
 zarr_overview(zarr_s3, as_data_frame = T) |> 
   mutate(var = sub(zarr_s3, "", path)) |> 
-  select(var, everything(), -path)
+  select(var, everything(), -path) 
 ```
 
 Read the attributes of the Zarr archive
@@ -107,16 +108,17 @@ Read the attributes of the Zarr archive
 These both do not work...
 ```{r, error=T}
 Rarr::read_zattrs(zarr_s3)
-
-Rarr::read_zattrs(file.path(zarr_s3, ".zattrs"))
+Rarr::read_zattrs(paste0(zarr_s3, "/.zattrs"))
 ```
 
 ... so read json directly:
 ```{r}
 attr_s3 = jsonlite::read_json(file.path(zarr_s3, ".zattrs"))
+# the same can be achieved with sf::gdal_utils('mdiminfo', ...)
 ```
 
-Read data from a single band array and its coordinates
+Read data from a single band array and its coordinates.
+Image is flipped!
 ```{r}
 # This time point to a single band asset directly!
 zarr_s3_b01 = paste0(zarr_s3, "/measurements/reflectance/r60m/b01")
@@ -139,7 +141,8 @@ zarr_crs = attr_s3$stac_discovery$properties$`proj:epsg`
 var = "B01"
 
 # read 
-zz = st_as_stars(z_s3) |> 
+# transpose matrixe before converting to stars
+zz = st_as_stars(z_s3 |> t()) |> 
   st_set_crs(zarr_crs) |> 
   st_set_dimensions(1, names = "X", values = zarr_s3_x) |> 
   st_set_dimensions(2, names = "Y", values = zarr_s3_y) |> 
@@ -172,7 +175,10 @@ st_read_zarr_band = function(path, var, res, ...){
   zarr_s3_y = file.path(path, "conditions/mask/detector_footprint", res_char, "y") |> 
     read_zarr_array(...)
   
-  st_as_stars(z_s3) |> 
+  # transpose matrixe before converting to stars
+  z_s3 |> 
+    t() |> 
+    st_as_stars() |> 
     st_set_crs(st_crs(zarr_crs)) |> 
     st_set_dimensions(1, names = "X", values = zarr_s3_x) |> 
     st_set_dimensions(2, names = "Y", values = zarr_s3_y) |> 
@@ -190,4 +196,7 @@ test...
 
 c(b01, b09) |> merge() |> plot(axes = TRUE)
 
+```
+```{r}
+sessionInfo()
 ```

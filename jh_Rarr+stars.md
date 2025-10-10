@@ -13,6 +13,7 @@ library(Rarr)
 library(stars)
 library(dplyr)
 library(jsonlite)
+library(mapview)
 ```
 
 ## Local Zarr with Rarr
@@ -131,7 +132,7 @@ r = read_stars(vsi_url, driver = "ZARR") # errors
     y    1 1830  5e+06   -60 [y]
 
 ``` r
-system.time(plot(r)) 
+system.time(plot(r, axes = TRUE)) 
 ```
 
     downsample set to 2
@@ -139,10 +140,20 @@ system.time(plot(r))
 ![](jh_Rarr+stars_files/figure-commonmark/unnamed-chunk-6-1.png)
 
        user  system elapsed 
-      1.104   0.064   1.158 
+      0.901   0.045   0.936 
 
 ``` r
-# stars mdim
+st_crs(r) # NA: empty
+```
+
+    Coordinate Reference System: NA
+
+``` r
+st_crs(r) = 'EPSG:32632'
+#mapview(r)
+```
+
+``` r
 read_mdim(vsi_url) # errors
 ```
 
@@ -155,21 +166,18 @@ read_mdim(vsi_url, "?") # query array names
     Error in d[[rd[1]]]: attempt to select less than one element in get1index
 
 ``` r
-m = read_mdim(vsi_url, variable = band_variable)
-```
-
-    Warning: ignoring unrecognized unit: digital_counts
-
-``` r
-system.time(plot(m)) # slow: only here the full array is downloaded 
+m = read_mdim(vsi_url, band_variable, proxy = TRUE)
+system.time(plot(m)) # slow: only here the full array is downloaded
 ```
 
     downsample set to 2
 
+    Warning: ignoring unrecognized unit: digital_counts
+
 ![](jh_Rarr+stars_files/figure-commonmark/unnamed-chunk-7-1.png)
 
        user  system elapsed 
-      0.666   0.045   0.713 
+      2.395   0.101  12.478 
 
 ``` r
 # terra 
@@ -190,7 +198,7 @@ system.time(plot(tr)) # slow: only here the full array is downloaded
 ![](jh_Rarr+stars_files/figure-commonmark/unnamed-chunk-8-1.png)
 
        user  system elapsed 
-      2.552   0.071  34.829 
+      3.031   0.152  16.680 
 
 ## Remote Zarr with Rarr
 
@@ -446,7 +454,7 @@ flipped!
 
 ``` r
 # This time point to a single band asset directly!
-zarr_s3_b01 = paste0(zarr_s3, "/measurements/reflectance/r60m/b01")
+zarr_s3_b01 = paste0(zarr_s3, band_variable)
 zarr_overview(zarr_s3_b01)
 ```
 
@@ -462,9 +470,9 @@ zarr_overview(zarr_s3_b01)
 ``` r
 z_s3 = read_zarr_array(zarr_s3_b01)
 
-zarr_s3_x = paste0(zarr_s3, "/conditions/mask/detector_footprint/r60m/x") |> 
+zarr_s3_x = paste0(zarr_s3, "/measurements/reflectance/r60m/x") |> 
   read_zarr_array()
-zarr_s3_y = paste0(zarr_s3, "/conditions/mask/detector_footprint/r60m/y") |> 
+zarr_s3_y = paste0(zarr_s3, "/measurements/reflectance/r60m/y") |> 
   read_zarr_array()
 ```
 
@@ -480,10 +488,10 @@ var = "B01"
 # read 
 # transpose matrixe before converting to stars
 zz = st_as_stars(z_s3 |> t()) |> 
-  st_set_crs(zarr_crs) |> 
   st_set_dimensions(1, names = "X", values = zarr_s3_x) |> 
   st_set_dimensions(2, names = "Y", values = zarr_s3_y) |> 
   setNames(var)
+st_crs(zz) = st_crs(zarr_crs)
 zz
 ```
 
@@ -492,9 +500,9 @@ zz
          Min. 1st Qu. Median     Mean 3rd Qu.  Max.
     B01  2299    2542   2628 4541.124    5304 17556
     dimension(s):
-      from   to  offset delta point x/y
-    X    1 1830  300030    60 FALSE [x]
-    Y    1 1830 5000010   -60 FALSE [y]
+      from   to  offset delta                refsys point x/y
+    X    1 1830  300030    60 WGS 84 / UTM zone 32N FALSE [x]
+    Y    1 1830 5000010   -60 WGS 84 / UTM zone 32N FALSE [y]
 
 ``` r
 plot(zz, axes = TRUE)
@@ -523,19 +531,21 @@ st_read_zarr_band = function(path, var, res, ...){
   # ...: make use of index arguments of read_zarr_array??
   z_s3 = file.path(path, "measurements/reflectance", res_char, var) |> 
     read_zarr_array(...)
-  zarr_s3_x = file.path(path, "conditions/mask/detector_footprint", res_char, "x") |> 
+  zarr_s3_x = file.path(path, "measurements/reflectance", res_char, "x") |> 
     read_zarr_array(...)
-  zarr_s3_y = file.path(path, "conditions/mask/detector_footprint", res_char, "y") |> 
+  zarr_s3_y = file.path(path, "measurements/reflectance", res_char, "y") |> 
     read_zarr_array(...)
   
   # transpose matrixe before converting to stars
-  z_s3 |> 
+  z = z_s3 |> 
     t() |> 
     st_as_stars() |> 
-    st_set_crs(st_crs(zarr_crs)) |> 
+    #st_set_crs(st_crs(zarr_crs)) |>   # does not seem to work in the pipeline.
     st_set_dimensions(1, names = "X", values = zarr_s3_x) |> 
     st_set_dimensions(2, names = "Y", values = zarr_s3_y) |> 
     setNames(var)
+  st_crs(z) = st_crs(zarr_crs)
+  return(z)
 }
 ```
 
@@ -552,9 +562,9 @@ test…
          Min. 1st Qu. Median     Mean 3rd Qu.  Max.
     b01  2299    2542   2628 4541.124    5304 17556
     dimension(s):
-      from   to  offset delta point x/y
-    X    1 1830  300030    60 FALSE [x]
-    Y    1 1830 5000010   -60 FALSE [y]
+      from   to  offset delta                refsys point x/y
+    X    1 1830  300030    60 WGS 84 / UTM zone 32N FALSE [x]
+    Y    1 1830 5000010   -60 WGS 84 / UTM zone 32N FALSE [y]
 
 ``` r
 (b09 = st_read_zarr_band(zarr_s3, "b09", 60))
@@ -565,9 +575,9 @@ test…
          Min. 1st Qu. Median     Mean 3rd Qu.  Max.
     b09  1086    1715   2079 3430.191    3143 16464
     dimension(s):
-      from   to  offset delta point x/y
-    X    1 1830  300030    60 FALSE [x]
-    Y    1 1830 5000010   -60 FALSE [y]
+      from   to  offset delta                refsys point x/y
+    X    1 1830  300030    60 WGS 84 / UTM zone 32N FALSE [x]
+    Y    1 1830 5000010   -60 WGS 84 / UTM zone 32N FALSE [y]
 
 ``` r
 c(b01, b09) |> merge() |> plot(axes = TRUE)
@@ -605,22 +615,26 @@ sessionInfo()
     [8] base     
 
     other attached packages:
-     [1] jsonlite_2.0.0        dplyr_1.1.4           stars_0.6-8          
-     [4] sf_1.0-21             Rarr_1.9.10           DelayedArray_0.28.0  
-     [7] SparseArray_1.2.4     S4Arrays_1.2.1        abind_1.4-8          
-    [10] IRanges_2.36.0        S4Vectors_0.40.2      MatrixGenerics_1.14.0
-    [13] matrixStats_1.5.0     BiocGenerics_0.48.1   Matrix_1.7-4         
+     [1] mapview_2.11.4        jsonlite_2.0.0        dplyr_1.1.4          
+     [4] stars_0.6-8           sf_1.0-21             Rarr_1.9.10          
+     [7] DelayedArray_0.28.0   SparseArray_1.2.4     S4Arrays_1.2.1       
+    [10] abind_1.4-8           IRanges_2.36.0        S4Vectors_0.40.2     
+    [13] MatrixGenerics_1.14.0 matrixStats_1.5.0     BiocGenerics_0.48.1  
+    [16] Matrix_1.7-4         
 
     loaded via a namespace (and not attached):
-     [1] rappdirs_0.3.3     generics_0.1.4     class_7.3-23       KernSmooth_2.23-26
-     [5] lattice_0.22-7     paws.common_0.8.5  digest_0.6.37      magrittr_2.0.4    
-     [9] evaluate_1.0.5     grid_4.5.1         fastmap_1.2.0      R.oo_1.27.1       
-    [13] R.utils_2.13.0     e1071_1.7-16       DBI_1.2.3          codetools_0.2-20  
-    [17] httr2_1.2.1        cli_3.6.5          rlang_1.1.6        crayon_1.5.3      
-    [21] units_1.0-0        XVector_0.42.0     R.methodsS3_1.8.2  withr_3.0.2       
-    [25] yaml_2.3.10        tools_4.5.1        parallel_4.5.1     curl_7.0.0        
-    [29] vctrs_0.6.5        R6_2.6.1           proxy_0.4-27       lifecycle_1.0.4   
-    [33] classInt_0.4-11    zlibbioc_1.48.2    pkgconfig_2.0.3    terra_1.8-70      
-    [37] pillar_1.11.1      glue_1.8.0         Rcpp_1.1.0         tidyselect_1.2.1  
-    [41] tibble_3.3.0       xfun_0.53          paws.storage_0.9.0 knitr_1.50        
-    [45] htmltools_0.5.8.1  rmarkdown_2.30     compiler_4.5.1    
+     [1] xfun_0.53          raster_3.6-32      httr2_1.2.1        htmlwidgets_1.6.4 
+     [5] lattice_0.22-7     vctrs_0.6.5        tools_4.5.1        crosstalk_1.2.2   
+     [9] generics_0.1.4     curl_7.0.0         parallel_4.5.1     tibble_3.3.0      
+    [13] proxy_0.4-27       paws.common_0.8.5  pkgconfig_2.0.3    R.oo_1.27.1       
+    [17] KernSmooth_2.23-26 satellite_1.0.6    RColorBrewer_1.1-3 leaflet_2.2.3     
+    [21] lifecycle_1.0.4    farver_2.1.2       compiler_4.5.1     terra_1.8-70      
+    [25] codetools_0.2-20   htmltools_0.5.8.1  class_7.3-23       yaml_2.3.10       
+    [29] pillar_1.11.1      crayon_1.5.3       R.utils_2.13.0     classInt_0.4-11   
+    [33] tidyselect_1.2.1   digest_0.6.37      paws.storage_0.9.0 fastmap_1.2.0     
+    [37] grid_4.5.1         cli_3.6.5          magrittr_2.0.4     base64enc_0.1-3   
+    [41] leafem_0.2.5       e1071_1.7-16       withr_3.0.2        scales_1.4.0      
+    [45] rappdirs_0.3.3     sp_2.2-0           rmarkdown_2.30     XVector_0.42.0    
+    [49] png_0.1-8          R.methodsS3_1.8.2  evaluate_1.0.5     knitr_1.50        
+    [53] rlang_1.1.6        Rcpp_1.1.0         glue_1.8.0         DBI_1.2.3         
+    [57] R6_2.6.1           zlibbioc_1.48.2    units_1.0-0       

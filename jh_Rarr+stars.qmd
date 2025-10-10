@@ -5,7 +5,7 @@ date: "`r Sys.Date()`"
 format: gfm
 toc: true
 grid:
-  body-width: 900px
+  body-width: 1500px
 ---
 
 ```{r, message=F}
@@ -73,12 +73,12 @@ system.time(plot(r, axes = TRUE))
 
 st_crs(r) # NA: empty
 st_crs(r) = 'EPSG:32632'
-mapview(r)
+#mapview(r)
 ```
 ```{r, error=T}
 read_mdim(vsi_url) # errors
 read_mdim(vsi_url, "?") # query array names
-m = read_mdim(vsi_url, "/measurements/reflectance/r10m/b02", proxy = TRUE)
+m = read_mdim(vsi_url, band_variable, proxy = TRUE)
 system.time(plot(m)) # slow: only here the full array is downloaded
 ```
 
@@ -121,14 +121,14 @@ Read data from a single band array and its coordinates.
 Image is flipped!
 ```{r}
 # This time point to a single band asset directly!
-zarr_s3_b01 = paste0(zarr_s3, "/measurements/reflectance/r60m/b01")
+zarr_s3_b01 = paste0(zarr_s3, band_variable)
 zarr_overview(zarr_s3_b01)
 
 z_s3 = read_zarr_array(zarr_s3_b01)
 
-zarr_s3_x = paste0(zarr_s3, "/conditions/mask/detector_footprint/r60m/x") |> 
+zarr_s3_x = paste0(zarr_s3, "/measurements/reflectance/r60m/x") |> 
   read_zarr_array()
-zarr_s3_y = paste0(zarr_s3, "/conditions/mask/detector_footprint/r60m/y") |> 
+zarr_s3_y = paste0(zarr_s3, "/measurements/reflectance/r60m/y") |> 
   read_zarr_array()
 ```
 
@@ -143,10 +143,10 @@ var = "B01"
 # read 
 # transpose matrixe before converting to stars
 zz = st_as_stars(z_s3 |> t()) |> 
-  st_set_crs(zarr_crs) |> 
   st_set_dimensions(1, names = "X", values = zarr_s3_x) |> 
   st_set_dimensions(2, names = "Y", values = zarr_s3_y) |> 
   setNames(var)
+st_crs(zz) = st_crs(zarr_crs)
 zz
 plot(zz, axes = TRUE)
 ```
@@ -170,19 +170,21 @@ st_read_zarr_band = function(path, var, res, ...){
   # ...: make use of index arguments of read_zarr_array??
   z_s3 = file.path(path, "measurements/reflectance", res_char, var) |> 
     read_zarr_array(...)
-  zarr_s3_x = file.path(path, "conditions/mask/detector_footprint", res_char, "x") |> 
+  zarr_s3_x = file.path(path, "measurements/reflectance", res_char, "x") |> 
     read_zarr_array(...)
-  zarr_s3_y = file.path(path, "conditions/mask/detector_footprint", res_char, "y") |> 
+  zarr_s3_y = file.path(path, "measurements/reflectance", res_char, "y") |> 
     read_zarr_array(...)
   
   # transpose matrixe before converting to stars
-  z_s3 |> 
+  z = z_s3 |> 
     t() |> 
     st_as_stars() |> 
-    st_set_crs(st_crs(zarr_crs)) |> 
+    #st_set_crs(st_crs(zarr_crs)) |>   # does not seem to work in the pipeline.
     st_set_dimensions(1, names = "X", values = zarr_s3_x) |> 
     st_set_dimensions(2, names = "Y", values = zarr_s3_y) |> 
     setNames(var)
+  st_crs(z) = st_crs(zarr_crs)
+  return(z)
 }
 
 ```

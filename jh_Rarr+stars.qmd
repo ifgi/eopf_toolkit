@@ -71,12 +71,25 @@ r = read_stars(vsi_url, driver = "ZARR") # errors
 (r = read_stars(paste(vsi_url, band_variable, sep = ":")))
 system.time(plot(r, axes = TRUE)) 
 
+sf::gdal_utils("mdiminfo", source = vsi_url)
+read_stars(vsi_url, 4:6)
+read_mdim(vsi_url)
+
+r = terra::rast(vsi_url)
+```
+
+```{r, error=T}
+vsi_url = paste0("ZARR:/vsicurl/", '"https://objects.eodc.eu/e05ab01a9d56408d82ac32d69a5aae2a:sample-data/tutorial_data/cpm_v253/S2B_MSIL1C_20250113T103309_N0511_R108_T32TLQ_20250113T122458.zarr"')
+
+sf::gdal_utils("mdiminfo", source = vsi_url)
+try(read_stars(vsi_url, driver = "ZARR")) # errors
+r = read_stars(paste(vsi_url, "/measurements/reflectance/r10m/b02", sep = ":"))
 st_crs(r) # NA: empty
 st_crs(r) = 'EPSG:32632'
-#mapview(r)
-```
-```{r, error=T}
-read_mdim(vsi_url) # errors
+system.time(plot(r, axes = TRUE))
+library(mapview)
+mapview(r)
+try(read_mdim(vsi_url)) # errors
 read_mdim(vsi_url, "?") # query array names
 m = read_mdim(vsi_url, band_variable, proxy = TRUE)
 system.time(plot(m)) # slow: only here the full array is downloaded

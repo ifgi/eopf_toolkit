@@ -12,6 +12,7 @@ grid:
 #remotes::install_github("sharlagelfand/Rarr")
 library(Rarr)
 library(stars)
+library(terra)
 library(dplyr)
 library(jsonlite)
 library(mapview)
@@ -199,8 +200,8 @@ st_read_zarr_band = function(path, var, res, ...){
   st_crs(z) = st_crs(zarr_crs)
   return(z)
 }
-
 ```
+
 test...
 
 ## Read and combine multiple bands??
@@ -210,8 +211,24 @@ test...
 (b09 = st_read_zarr_band(zarr_s3, "b09", 60))
 
 c(b01, b09) |> merge() |> plot(axes = TRUE)
-
 ```
+
+## Benchmark
+
+```{r}
+f_stars = function(){rs = read_stars(paste(vsi_url, band_variable, sep = ":"))}
+f_mdim = function(){sm = read_mdim(vsi_url, band_variable, proxy = FALSE) |> 
+  setNames(basename(band_variable))}
+f_rast = function(){tr = rast(vsi_url, band_variable) |> toMemory()}
+f_rarr = function(){rr = st_read_zarr_band(zarr_s3, "b01", 60)}
+```
+
+```{r}
+bench::mark(f_stars(), f_mdim(), f_rast(), f_rarr(), 
+  check = F, iterations = 5)
+```
+
+
 ```{r}
 sessionInfo()
 ```

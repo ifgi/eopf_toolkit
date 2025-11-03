@@ -6,3 +6,10 @@ This repo collects R notebooks reading Copernicus Sentinel (satellite imagery) d
 * [ESA EOPF toolkit](https://github.com/eopf-toolkit) master project,
 
 to which this activity tries to contribute working examples, and find limiting issues, from the R side. 
+
+Example notebooks:
+
+* [R package Rarr + stars](jh_Rarr+stars.html)
+* [Reading remote Zarr files using GDAL](remote_Zarr_via_GDAL.html)
+* [Using rstac and gdalcubes](rstac+gdalcubes.html)
+* [fire detection](remote_Zarr_via_GDAL.html)

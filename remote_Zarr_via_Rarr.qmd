@@ -1,6 +1,8 @@
 ---
 title: "Accessing Zarr archives using `Rarr`"
 format: html
+execute: 
+  cache: true
 ---
 
 ### Introduction
@@ -204,6 +206,21 @@ system.time({
 
 plot(multi_band, axes = TRUE)
 ```
+
+Interactive visualization:
+
+```{r}
+#| echo: false
+mapviewOptions(basemaps = c("OpenTopoMap","Esri.WorldImagery", 
+                            "CartoDB.Positron"))
+```
+
+```{r}
+#| message: false
+
+mapview(multi_band)
+```
+
 
 ## Benchmark
 

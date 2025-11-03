@@ -9,7 +9,7 @@ to which this activity tries to contribute working examples, and find limiting i
 
 Example notebooks:
 
-* [R package Rarr + stars](jh_Rarr+stars.html)
+* [Reading remote Zarr files using Rarr](remote_Zarr_via_Rarr.html)
 * [Reading remote Zarr files using GDAL](remote_Zarr_via_GDAL.html)
 * [Using rstac and gdalcubes](rstac+gdalcubes.html)
-* [fire detection](remote_Zarr_via_GDAL.html)
+* [Fire Detection](fire_detection.html)

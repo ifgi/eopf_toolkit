@@ -1,6 +1,8 @@
 ---
 title: "Accessing Zarr archives via GDAL in `stars` and `terra`"
 format: html
+execute: 
+  cache: true
 ---
 
 ### Introduction
@@ -123,6 +125,15 @@ This method successfully reads the specified band from the remote Zarr archive.
 🚧 However, note that the coordinate reference system (CRS) is not automatically recognized and needs to be set manually.
 
 Interactive visualization:
+
+```{r}
+#| message: false
+#| echo: false
+
+mapviewOptions(basemaps = c("OpenTopoMap","Esri.WorldImagery", 
+                            "CartoDB.Positron"))
+```
+
 ```{r}
 mapview(r)
 ```

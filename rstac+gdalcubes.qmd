@@ -10,7 +10,7 @@ self-contained: true
 This notebook demonstrates how to create a raster cube from STAC items from the EOPF Sentinel Zarr Samples Service using the `rstac` and `gdalcubes` packages in R.
 We will search for Sentinel-2 images roughly covering the Münsterland region in Germany for June 2025, and retrieve corresponding STAC items with `rstac`. We will then use `gdalcubes` to create a raster cube and visualize an RGB plot aggregating the data to one image (using median) and resampling to 100m spatial resolution. 
 
-The `gdalcubes` package offers powerfull functionality to create regular raster cubes from irregular image collections and manages issues such as differing spatial and temporal resolutions, partial spatial overlap or differing projections etc. It first collects images in so-called _image collections_ and creates data cubes from them, where the spatiotemporal geometry is defined via a `data cube view`. It also has a function to directly create _image collections_ from STAC items, which we will use here.
+The `gdalcubes` package offers powerfull functionality to create regular raster cubes from irregular image collections and manages issues such as differing spatial and temporal resolutions, partial spatial overlap or differing projections etc. It first collects images in so-called _image collections_ and creates data cubes from them, where the spatiotemporal geometry is defined via a _data cube view_. It also has a function to directly create _image collections_ from STAC items, which we will use here.
 For details on the functionality and concepts, see the [gdalcubes documentation](https://gdalcubes.github.io/) and specifically [Marius´ tutorial](https://gdalcubes.github.io/source/tutorials/vignettes/gc02_AWS_Sentinel2.html) on the example of the Sentinel-2 COG catalog on Amazon Web Services (AWS).
 
 
@@ -81,7 +81,7 @@ Why adapt the function?
 ```{r}
 items$features[[1]]$assets$B02_10m$href 
 ```
-What you want - in order for GDAL to use the correct driver- is the URL with a prefix for the correc Zarr driver, see tutorial: https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/
+What you want - in order for GDAL to use the correct driver- is the URL with a prefix for the correct Zarr driver, see tutorial: https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/
 Also, we want it to point directly to the .zarr file the function above replaces the href by one that directs directly there.
 Since you can give this as an argument to stac_image_collection(), it will be applied to all assets.
 

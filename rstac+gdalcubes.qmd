@@ -22,16 +22,16 @@ For details on the functionality and concepts, see the [gdalcubes documentation]
 
 
 ::: {.callout-note}
-As you will see, we will need some tweaking of the workflow here and there, since `gdalcubes`currently not fully prepared for working with the EOPF Sentinel Zarr Samples Service, but the functionality is there and will hopefully be streamlined in future releases.
+As you will see, we will need some tweaking of the workflow here and there, since `gdalcubes` is currently not fully prepared for working with the EOPF Sentinel Zarr Samples Service, but the functionality is there and will hopefully be streamlined in future releases.
 :::
 
 ::: {.callout-note}
-This now also works on Windows when using R >=4.5.2 and rtools >=6690, where an issue with reading blosc compressed files using gdal was fixed, see [here](https://github.com/r-spatial/stars/issues/663#issuecomment-3435761956) 
+This now also works on Windows when using R >= 4.5.2, where an issue with reading blosc compressed files using gdal was fixed, see [here](https://github.com/r-spatial/stars/issues/663#issuecomment-3435761956) 
 :::
 
 ### Prerequisites
 
-Make sure to have R >=4.5.2  and rtools >=6690. Install `rstac`, `sf` and `gdalcubes`.
+Make sure to have R >=4.5.2. Install `rstac`, `sf` and `gdalcubes`.
 
 ```{r}
 #install.packages("rstac")

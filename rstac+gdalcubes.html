@@ -2217,7 +2217,7 @@ Note
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>As you will see, we will need some tweaking of the workflow here and there, since <code>gdalcubes</code>currently not fully prepared for working with the EOPF Sentinel Zarr Samples Service, but the functionality is there and will hopefully be streamlined in future releases.</p>
+<p>As you will see, we will need some tweaking of the workflow here and there, since <code>gdalcubes</code> is currently not fully prepared for working with the EOPF Sentinel Zarr Samples Service, but the functionality is there and will hopefully be streamlined in future releases.</p>
 </div>
 </div>
 <div class="callout callout-style-default callout-note callout-titled">
@@ -2230,13 +2230,13 @@ Note
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>This now also works on Windows when using R &gt;=4.5.2 and rtools &gt;=6690, where an issue with reading blosc compressed files using gdal was fixed, see <a href="https://github.com/r-spatial/stars/issues/663#issuecomment-3435761956">here</a></p>
+<p>This now also works on Windows when using R &gt;= 4.5.2, where an issue with reading blosc compressed files using gdal was fixed, see <a href="https://github.com/r-spatial/stars/issues/663#issuecomment-3435761956">here</a></p>
 </div>
 </div>
 </section>
 <section id="prerequisites" class="level3">
 <h3 class="anchored" data-anchor-id="prerequisites">Prerequisites</h3>
-<p>Make sure to have R &gt;=4.5.2 and rtools &gt;=6690. Install <code>rstac</code>, <code>sf</code> and <code>gdalcubes</code>.</p>
+<p>Make sure to have R &gt;=4.5.2. Install <code>rstac</code>, <code>sf</code> and <code>gdalcubes</code>.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">#install.packages(&quot;rstac&quot;)</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co">#install.packages(&quot;sf&quot;)</span></span>
@@ -2390,7 +2390,7 @@ Spatial resampling method: &quot;near&quot;</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-   0.94    0.54  217.24 </code></pre>
+   0.67    0.35  206.17 </code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>  <span class="co">#write_tif(&quot;eopf_s2_munsterland_june2025_RGB_median_100m.tif&quot;))</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>

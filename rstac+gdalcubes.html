@@ -2203,7 +2203,7 @@ vertical-align: -.125em;
 <section id="what-we-will-learn" class="level3">
 <h3 class="anchored" data-anchor-id="what-we-will-learn">What we will learn</h3>
 <ul>
-<li>🚀 Retrieve STAC items for Sentinel-2 imagery in a specified AOI (roughly “Münsterland”, Germany) and time range (June 2025) using <code>rstac</code></li>
+<li>🚀 Retrieve STAC items for Sentinel-2 imagery in a specified AOI (roughly “Münsterland” region, Germany) and time range (June 2025) using <code>rstac</code></li>
 <li>🔎 Create an image collection from STAC items using <code>stac_image_collection()</code> in <code>gdalcubes</code></li>
 <li>🛰️ Create a raster cube with a user-defined spatiotemporal geometry using <code>cube_view()</code> and <code>raster_cube()</code> in <code>gdalcubes</code></li>
 </ul>
@@ -2236,10 +2236,11 @@ Note
 </section>
 <section id="prerequisites" class="level3">
 <h3 class="anchored" data-anchor-id="prerequisites">Prerequisites</h3>
-<p>Make sure to have R &gt;=4.5.2 and rtools &gt;=6690. Install <code>sf</code> and <code>gdalcubes</code> from source.</p>
+<p>Make sure to have R &gt;=4.5.2 and rtools &gt;=6690. Install <code>rstac</code>, <code>sf</code> and <code>gdalcubes</code>.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">#install.packages(&quot;sf&quot;, type = &quot;source&quot;)</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co">#install.packages(&quot;gdalcubes&quot;, type = &quot;source&quot;)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">#install.packages(&quot;rstac&quot;)</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co">#install.packages(&quot;sf&quot;)</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co">#install.packages(&quot;gdalcubes&quot;)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="create-image-collection-from-stac-items" class="level3">
@@ -2389,7 +2390,7 @@ Spatial resampling method: &quot;near&quot;</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-   0.67    0.31  211.80 </code></pre>
+   0.94    0.54  217.24 </code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>  <span class="co">#write_tif(&quot;eopf_s2_munsterland_june2025_RGB_median_100m.tif&quot;))</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>

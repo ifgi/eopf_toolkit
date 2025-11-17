@@ -16,7 +16,7 @@ For details on the functionality and concepts, see the [gdalcubes documentation]
 
 ### What we will learn
 
-- 🚀 Retrieve STAC items for Sentinel-2 imagery in a specified AOI (roughly "Münsterland", Germany) and time range (June 2025) using `rstac`
+- 🚀 Retrieve STAC items for Sentinel-2 imagery in a specified AOI (roughly "Münsterland" region, Germany) and time range (June 2025) using `rstac`
 - 🔎 Create an image collection from STAC items using `stac_image_collection()` in `gdalcubes`
 - 🛰️ Create a raster cube with a user-defined spatiotemporal geometry using `cube_view()` and `raster_cube()` in `gdalcubes`
 
@@ -31,11 +31,12 @@ This now also works on Windows when using R >=4.5.2 and rtools >=6690, where an 
 
 ### Prerequisites
 
-Make sure to have R >=4.5.2  and rtools >=6690. Install `sf` and `gdalcubes` from source.
+Make sure to have R >=4.5.2  and rtools >=6690. Install `rstac`, `sf` and `gdalcubes`.
 
 ```{r}
-#install.packages("sf", type = "source")
-#install.packages("gdalcubes", type = "source")
+#install.packages("rstac")
+#install.packages("sf")
+#install.packages("gdalcubes")
 ```
 
 

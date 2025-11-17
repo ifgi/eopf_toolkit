@@ -1,25 +1,48 @@
 ---
-title: "Creating a raster cube from STAC items from EOPF using rstac and gdalcubes"
+title: "Creating a raster cube from STAC items of the EOPF Zarr Samples Service using rstac and gdalcubes"
 format: html
-author: "Christian" 
 self-contained: true
 ---
 
-This now also works on Windows when using R-devel and rtools >=6690, where an issue with reading blosc compressed files using gdal was fixed, see [here](https://github.com/r-spatial/stars/issues/663#issuecomment-3435761956) 
 
-After installing R-devel and rtools, install `sf` and `gdalcubes` from source.
+### Introduction
+
+This notebook demonstrates how to create a raster cube from STAC items from the EOPF Sentinel Zarr Samples Service using the `rstac` and `gdalcubes` packages in R.
+We will search for Sentinel-2 images roughly covering the Münsterland region in Germany for June 2025, and retrieve corresponding STAC items with `rstac`. We will then use `gdalcubes` to create a raster cube and visualize an RGB plot aggregating the data to one image (using median) and resampling to 100m spatial resolution. 
+
+The `gdalcubes` package offers powerfull functionality to create regular raster cubes from irregular image collections and manages issues such as differing spatial and temporal resolutions, partial spatial overlap or differing projections etc. It first collects images in so-called _image collections_ and creates data cubes from them, where the spatiotemporal geometry is defined via a `data cube view`. It also has a function to directly create _image collections_ from STAC items, which we will use here.
+For details on the functionality and concepts, see the [gdalcubes documentation](https://gdalcubes.github.io/) and specifically [Marius´ tutorial](https://gdalcubes.github.io/source/tutorials/vignettes/gc02_AWS_Sentinel2.html) on the example of the Sentinel-2 COG catalog on Amazon Web Services (AWS).
+
+
+### What we will learn
+
+- 🚀 Retrieve STAC items for Sentinel-2 imagery in a specified AOI (roughly "Münsterland", Germany) and time range (June 2025) using `rstac`
+- 🔎 Create an image collection from STAC items using `stac_image_collection()` in `gdalcubes`
+- 🛰️ Create a raster cube with a user-defined spatiotemporal geometry using `cube_view()` and `raster_cube()` in `gdalcubes`
+
+
+::: {.callout-note}
+As you will see, we will need some tweaking of the workflow here and there, since `gdalcubes`currently not fully prepared for working with the EOPF Sentinel Zarr Samples Service, but the functionality is there and will hopefully be streamlined in future releases.
+:::
+
+::: {.callout-note}
+This now also works on Windows when using R >=4.5.2 and rtools >=6690, where an issue with reading blosc compressed files using gdal was fixed, see [here](https://github.com/r-spatial/stars/issues/663#issuecomment-3435761956) 
+:::
+
+### Prerequisites
+
+Make sure to have R >=4.5.2  and rtools >=6690. Install `sf` and `gdalcubes` from source.
 
 ```{r}
 #install.packages("sf", type = "source")
 #install.packages("gdalcubes", type = "source")
-library(rstac)
-library(gdalcubes)
-library(sf)
 ```
 
+
+
 ### Create image collection from STAC items 
-We can convert STAC items received through `rstac` to gdalcubes image collections using the function `stac_image_collection()`.
-From there on, we can create raster cubes as usual. See also [Marius´ tutorial](https://gdalcubes.github.io/source/tutorials/vignettes/gc02_AWS_Sentinel2.html) on the example of the Sentinel-2 COG catalog on Amazon Web Services (AWS). For using this with the EOPF Zarr STAC API, we need to adapt the download function a little bit (see below).
+We can convert STAC items received through `rstac` to `gdalcubes` image collections using the function `stac_image_collection()`.
+From there on, we can create raster cubes as usual. See also [Marius´ tutorial](https://gdalcubes.github.io/source/tutorials/vignettes/gc02_AWS_Sentinel2.html). For using this with the EOPF Zarr STAC API, we need to adapt the download function a little bit (see below).
 
 
 Finding STAC items from EOPF STAC API with `rstac`:
@@ -27,6 +50,11 @@ Finding STAC items from EOPF STAC API with `rstac`:
 # Using a bbox roughly for "Münsterland" and June 2025.
 # For the stac request, I need the bbox in WGS84
 # We limit the no of results to 5 for testing purposes
+library(rstac)
+library(gdalcubes)
+library(sf)
+
+
 bbox_wgs84 <- st_bbox(c(xmin = 6.55, xmax = 7.8, ymin = 51.8, ymax = 52.4), crs = st_crs(4326))
 bbox_utm =st_transform(bbox_wgs84, "EPSG:32632")
 
@@ -41,25 +69,25 @@ stac_source = stac("https://stac.core.eopf.eodc.eu/")
 
 items
 
-###--> adapt download function to adapt the URL such that it points to the actual ZARR file 
+###--> adapt download function to adapt the URL such that it prepends a necessary prefix, and points to the .zarr file
 f = function(href) {
   return(paste0("ZARR:\"/vsicurl/", gsub(".zarr/", ".zarr\"/", href)))
 }
 ```
 
 Why adapt the function?
+--> this is what you get from stac:
 ```{r}
-items$features[[1]]$assets$B02_10m$href #--> this is what you get from stac, 
-# but what you want - in order for GDAL to understand it- is the URL to the .zarr file; 
-# see tutorial: https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/
-# the function above replaces the href by one that directs directly there 
-# --> since you can give this as an argument to stac_image_collection(), it will be applied to all assets
-
+items$features[[1]]$assets$B02_10m$href 
 ```
+What you want - in order for GDAL to use the correct driver- is the URL with a prefix for the correc Zarr driver, see tutorial: https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/
+Also, we want it to point directly to the .zarr file the function above replaces the href by one that directs directly there.
+Since you can give this as an argument to stac_image_collection(), it will be applied to all assets.
 
+
+Create image collection from STAC items:
 ```{r}
-### Create image collection from stac items
-# set argument "srs", because gdalcubes looks for proj:epsg, but in the collection there is only proj:code
+# manually set argument "srs", because gdalcubes looks for proj:epsg, but in the collection there is only proj:code
 # also: since the items found are not all in the same UTM zone, I want to filter them first
 s2_collection = stac_image_collection(items$features, srs = "EPSG:32632", asset_names = c("B02_10m", "B03_10m", "B04_10m", "B08_10m"), url_fun = f, property_filter = function(x) {x[["proj:code"]] == "EPSG:32632"})
 
@@ -78,9 +106,9 @@ v = cube_view(srs="EPSG:32632", dx=100, dy=100, dt="P1D",
 
 v
 ```
-### Create cube 
+### Create cube and plot
 
-Create a raster cube and plot (alternatively write to GeoTIFF). This is currently quite slow.
+Create a raster cube and plot the RGB bands (alternatively write to GeoTIFF). This is currently quite slow.
 ```{r}	
 system.time(raster_cube(s2_collection, v) |>
   select_bands(c("B02_10m","B03_10m","B04_10m")) |>

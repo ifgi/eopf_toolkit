@@ -79,6 +79,16 @@ search_bbox = c(8.847198, 40.193395, 8.938865, 40.24189)
 ```
 
 ```{r error=TRUE}
+stac_source <- stac("https://stac.core.eopf.eodc.eu/")
+stac_source |>
+  get_request()
+
+derive_store_array <- function(store, product_url) {
+  store |>
+    mutate(array = str_remove(path, product_url)) |>
+    relocate(array, .before = path)
+}
+
 # Acccess the Pre-Fire image using rstac
 pre_stac_query <- rstac::stac_search(
   q = stac_source,

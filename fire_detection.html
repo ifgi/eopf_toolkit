@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Read, Access, and Download EOPF ZARR Products</title>
+<title>Fire Detection</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -81,7 +81,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Read, Access, and Download EOPF ZARR Products</h1>
+<h1 class="title">Fire Detection</h1>
 </div>
 
 
@@ -98,704 +98,172 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
+<section id="introduction" class="level3">
+<h3 class="anchored" data-anchor-id="introduction">Introduction</h3>
+<p>Wildfires are serious natural hazard that can dramatically affect human and the ecosystems. Monitoring these events is essential for assessing ecological impact, supporting recovery planning, and improving future fire-management strategies. Satellite imagery provides an effective way to observe burned areas over large regions, even in remote or inaccessible locations.</p>
+<p>In this notebook, we use Sentinel-2 Level-2A imagery to visualize and analyze a wildfire event by comparing images before and after the fire. By creating visual composites and calculating burn-related spectral indices, we can clearly identify the extent of damage and understand how the landscape has changed.</p>
+</section>
+<section id="what-we-will-learn" class="level3">
+<h3 class="anchored" data-anchor-id="what-we-will-learn">What we will learn</h3>
+<ul>
+<li>🚀 Access and prepare Sentinel-2 L2A imagery for wildfire detection.</li>
+<li>🛰️ Visualize pre-fire and post-fire scenes using true-color composite.</li>
+<li>🛰️ Compare pre-fire and post-fire images to identify the affected areas..</li>
+</ul>
+</section>
+<section id="the-case-study" class="level3">
+<h3 class="anchored" data-anchor-id="the-case-study">The case study</h3>
+<p>In this notebook, we focus on the same fire event examined in <a href="https://eopf-toolkit.github.io/eopf-101/61_sardinia_s2_tfci.html">“the EOPF Zarr in Action tutorial”</a> a fire that occurred in the Province of Nuoro in the Italian region of Sardinia on June 10th, 2025.</p>
+</section>
+<section id="import-packages" class="level3">
+<h3 class="anchored" data-anchor-id="import-packages">Import packages</h3>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># install.packages("rstac")</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># install.packages("terra")</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># install.packages("BiocManager")</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># install.packages("tidyverse")</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># install.packages("stars")</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># BiocManager::install("Rarr")</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rstac)</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(terra)</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(Rarr)</span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(stars)</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(fs)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>.url_parse_other <span class="ot">&lt;-</span> <span class="cf">function</span>(url) {</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  parsed_url <span class="ot">&lt;-</span> httr<span class="sc">::</span><span class="fu">parse_url</span>(url)</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  bucket <span class="ot">&lt;-</span> <span class="fu">gsub</span>(</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> parsed_url<span class="sc">$</span>path, <span class="at">pattern =</span> <span class="st">"^/?([[a-z0-9</span><span class="sc">\\</span><span class="st">:</span><span class="sc">\\</span><span class="st">.-]*)/.*"</span>,</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">replacement =</span> <span class="st">"</span><span class="sc">\\</span><span class="st">1"</span>, <span class="at">ignore.case =</span> <span class="cn">TRUE</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  object <span class="ot">&lt;-</span> <span class="fu">gsub</span>(</span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> parsed_url<span class="sc">$</span>path, <span class="at">pattern =</span> <span class="st">"^/?([a-z0-9</span><span class="sc">\\</span><span class="st">:</span><span class="sc">\\</span><span class="st">.-]*)/(.*)"</span>,</span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">replacement =</span> <span class="st">"</span><span class="sc">\\</span><span class="st">2"</span>, <span class="at">ignore.case =</span> <span class="cn">TRUE</span></span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  hostname <span class="ot">&lt;-</span> <span class="fu">paste0</span>(parsed_url<span class="sc">$</span>scheme, <span class="st">"://"</span>, parsed_url<span class="sc">$</span>hostname)</span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.null</span>(parsed_url<span class="sc">$</span>port)) {</span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    hostname <span class="ot">&lt;-</span> <span class="fu">paste0</span>(hostname, <span class="st">":"</span>, parsed_url<span class="sc">$</span>port)</span>
-<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>  res <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
-<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">bucket =</span> bucket,</span>
-<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">object =</span> object,</span>
-<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">region =</span> <span class="st">"auto"</span>,</span>
-<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">hostname =</span> hostname</span>
-<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(res)</span>
-<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a><span class="fu">assignInNamespace</span>(<span class="st">".url_parse_other"</span>, .url_parse_other, <span class="at">ns =</span> <span class="st">"Rarr"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<section id="connect-to-the-eopf-sample-service-stac-api" class="level1">
-<h1>Connect to the EOPF Sample Service STAC API</h1>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>stac_source <span class="ot">&lt;-</span> <span class="fu">stac</span>(<span class="st">"https://stac.core.eopf.eodc.eu/"</span>)</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>stac_source <span class="sc">|&gt;</span></span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">get_request</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>###Catalog
-- id: eopf-sample-service-stac-api
-- description: STAC catalog of the EOPF Sentinel Zarr Samples Service
-- field(s): 
-type, id, title, description, stac_version, conformsTo, links, stac_extensions</code></pre>
-</div>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rstac)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(terra)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(Rarr)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(stars)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(fs)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="search-aoi" class="level1">
-<h1>Search AOI</h1>
-<p>Fire: Varibobi (Attica), Greece — June 2025 Region: North of Athens, Attica</p>
+<section id="fixes-to-the-rarr-package" class="level3">
+<h3 class="anchored" data-anchor-id="fixes-to-the-rarr-package">Fixes to the Rarr package</h3>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>collections_query <span class="ot">&lt;-</span> stac_source <span class="sc">|&gt;</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  rstac<span class="sc">::</span><span class="fu">collections</span>()</span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>collections_query</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>###rstac_query
-- url: https://stac.core.eopf.eodc.eu/
-- params:
-- field(s): version, base_url, endpoint, params, verb, encode</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>available_collections <span class="ot">&lt;-</span> rstac<span class="sc">::</span><span class="fu">get_request</span>(collections_query)</span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>available_collections</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>###Collections
-- collections (11 item(s)):
-  - sentinel-2-l2a
-  - sentinel-3-olci-l2-lfr
-  - sentinel-3-slstr-l2-lst
-  - sentinel-1-l2-ocn
-  - sentinel-1-l1-grd
-  - sentinel-2-l1c
-  - sentinel-1-l1-slc
-  - sentinel-3-slstr-l1-rbt
-  - sentinel-3-olci-l1-efr
-  - sentinel-3-olci-l1-err
-  - sentinel-3-olci-l2-lrr
-- field(s): collections, links, numberMatched, numberReturned</code></pre>
-</div>
-</div>
-<section id="this-is-our-aoi-in-greece-and-it-is-not-working" class="level2">
-<h2 class="anchored" data-anchor-id="this-is-our-aoi-in-greece-and-it-is-not-working">This is our AOI in Greece and it is not working</h2>
-<p>It does not work for downladed ZARR, and using the product URL.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Acccess the data using rstac</span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>stac_query1 <span class="ot">&lt;-</span> rstac<span class="sc">::</span><span class="fu">stac_search</span>(</span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">q =</span> stac_source,</span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">collections =</span> <span class="st">"sentinel-2-l2a"</span>,</span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">bbox =</span> <span class="fu">c</span>(<span class="fl">25.70</span>, <span class="fl">38.10</span>, <span class="fl">26.40</span>, <span class="fl">38.50</span>),</span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">datetime =</span> <span class="st">"2025-06-03T01:00:00Z/2025-06-30T05:00:00Z"</span>,</span>
-<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">limit =</span> <span class="dv">999</span></span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>executed_stac_query1 <span class="ot">&lt;-</span> rstac<span class="sc">::</span><span class="fu">get_request</span>(stac_query1)</span>
-<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Download assest </span></span>
-<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>item1 <span class="ot">&lt;-</span> executed_stac_query1<span class="sc">$</span>features[[<span class="dv">1</span>]]</span>
-<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>rstac<span class="sc">::</span><span class="fu">assets_download</span>(item1,</span>
-<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a> <span class="st">"B08_10m"</span>,</span>
-<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a> <span class="at">overwrite =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">output_dir =</span> <span class="fu">tempdir</span>())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>###Item
-- id: S2B_MSIL2A_20250628T090559_N0511_R050_T35SMC_20250628T102339
-- collection: sentinel-2-l2a
-- bbox: xmin: 25.84725, ymin: 37.85395, xmax: 26.28050, ymax: 38.84524
-- datetime: 2025-06-28T09:05:59.024000Z
-- assets: B08_10m
-- item's fields: 
-assets, bbox, collection, geometry, id, links, properties, stac_extensions, stac_version, type</code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Access the downloaded ZARR </span></span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>output_file1 <span class="ot">&lt;-</span> <span class="fu">file.path</span>(</span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tempdir</span>(),</span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">"e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/28/products/cpm_v256/S2B_MSIL2A_20250628T090559_N0511_R050_T35SMC_20250628T102339.zarr"</span>)</span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="fu">zarr_overview</span>(output_file1)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Warning in open.connection(con, "rb"): cannot open file
-'/private/var/folders/s_/w16tjsxn3jgb8mlcdvdrk9b80000gn/T/RtmpSRE4LJ/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/28/products/cpm_v256/S2B_MSIL2A_20250628T090559_N0511_R050_T35SMC_20250628T102339.zarr/.zarray':
-No such file or directory</code></pre>
-</div>
-<div class="cell-output cell-output-error">
-<pre><code>Error in open.connection(con, "rb"): cannot open the connection</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Try to read it using product URL</span></span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>s2_l2a_product <span class="ot">&lt;-</span> executed_stac_query1<span class="sc">$</span>features[[<span class="dv">1</span>]] <span class="sc">|&gt;</span></span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">assets_select</span>(<span class="at">asset_names =</span> <span class="st">"product"</span>)</span>
-<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>s2_l2a_product_url1 <span class="ot">&lt;-</span> s2_l2a_product <span class="sc">|&gt;</span></span>
-<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">assets_url</span>()</span>
-<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>s2_l2a_product_url1</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] "https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/28/products/cpm_v256/S2B_MSIL2A_20250628T090559_N0511_R050_T35SMC_20250628T102339.zarr"</code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>derive_store_array <span class="ot">&lt;-</span> <span class="cf">function</span>(store, product_url) {</span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  store <span class="sc">|&gt;</span></span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">array =</span> <span class="fu">str_remove</span>(path, product_url)) <span class="sc">|&gt;</span></span>
-<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">relocate</span>(array, <span class="at">.before =</span> path)</span>
-<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>zarr_store <span class="ot">&lt;-</span> s2_l2a_product_url1 <span class="sc">|&gt;</span></span>
-<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">zarr_overview</span>(<span class="at">as_data_frame =</span> <span class="cn">TRUE</span>) <span class="sc">|&gt;</span></span>
-<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">derive_store_array</span>(s2_l2a_product_url1)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-error">
-<pre><code>Error: lexical error: invalid char in json text.
-                         "fill_value": NaN             },             
-                     (right here) ------^</code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>zarr_store</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-error">
-<pre><code>Error: object 'zarr_store' not found</code></pre>
-</div>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>.url_parse_other <span class="ot">&lt;-</span> <span class="cf">function</span>(url) {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  parsed_url <span class="ot">&lt;-</span> httr<span class="sc">::</span><span class="fu">parse_url</span>(url)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  bucket <span class="ot">&lt;-</span> <span class="fu">gsub</span>(</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> parsed_url<span class="sc">$</span>path, <span class="at">pattern =</span> <span class="st">"^/?([[a-z0-9</span><span class="sc">\\</span><span class="st">:</span><span class="sc">\\</span><span class="st">.-]*)/.*"</span>,</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">replacement =</span> <span class="st">"</span><span class="sc">\\</span><span class="st">1"</span>, <span class="at">ignore.case =</span> <span class="cn">TRUE</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  object <span class="ot">&lt;-</span> <span class="fu">gsub</span>(</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> parsed_url<span class="sc">$</span>path, <span class="at">pattern =</span> <span class="st">"^/?([a-z0-9</span><span class="sc">\\</span><span class="st">:</span><span class="sc">\\</span><span class="st">.-]*)/(.*)"</span>,</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">replacement =</span> <span class="st">"</span><span class="sc">\\</span><span class="st">2"</span>, <span class="at">ignore.case =</span> <span class="cn">TRUE</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  hostname <span class="ot">&lt;-</span> <span class="fu">paste0</span>(parsed_url<span class="sc">$</span>scheme, <span class="st">"://"</span>, parsed_url<span class="sc">$</span>hostname)</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.null</span>(parsed_url<span class="sc">$</span>port)) {</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    hostname <span class="ot">&lt;-</span> <span class="fu">paste0</span>(hostname, <span class="st">":"</span>, parsed_url<span class="sc">$</span>port)</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>  res <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">bucket =</span> bucket,</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">object =</span> object,</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">region =</span> <span class="st">"auto"</span>,</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">hostname =</span> hostname</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(res)</span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a><span class="fu">assignInNamespace</span>(<span class="st">".url_parse_other"</span>, .url_parse_other, <span class="at">ns =</span> <span class="st">"Rarr"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="this-aoi-from-this-example-httpseopf-toolkit.github.ioeopf-10161_sardinia_s2_tfci.html" class="level2">
-<h2 class="anchored" data-anchor-id="this-aoi-from-this-example-httpseopf-toolkit.github.ioeopf-10161_sardinia_s2_tfci.html">This AOI from this example “https://eopf-toolkit.github.io/eopf-101/61_sardinia_s2_tfci.html”</h2>
-<p>It worked when try to read it using product_url but it’s not working when try to read the downladed ZARR</p>
+<section id="access-sentinel-2-l2a-imagery-for-pre-and-post-fire-event-using-rstac" class="level3">
+<h3 class="anchored" data-anchor-id="access-sentinel-2-l2a-imagery-for-pre-and-post-fire-event-using-rstac">Access Sentinel-2 L2A imagery for Pre and Post-fire event using Rstac</h3>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Acccess the data usibng rstac</span></span>
-<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>stac_query2 <span class="ot">&lt;-</span> rstac<span class="sc">::</span><span class="fu">stac_search</span>(</span>
-<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">q =</span> stac_source,</span>
-<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">collections =</span> <span class="st">"sentinel-2-l2a"</span>,</span>
-<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">bbox =</span> <span class="fu">c</span>(<span class="fl">8.847198</span>,<span class="fl">40.193395</span>,<span class="fl">8.938865</span>,<span class="fl">40.241895</span>),</span>
-<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">datetime =</span> <span class="st">"2025-06-03T01:00:00Z/2025-06-04T05:00:00Z"</span>,</span>
-<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">limit =</span> <span class="dv">999</span></span>
-<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>executed_stac_query2 <span class="ot">&lt;-</span> rstac<span class="sc">::</span><span class="fu">get_request</span>(stac_query2)</span>
-<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Download assest </span></span>
-<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>item2 <span class="ot">&lt;-</span> executed_stac_query2<span class="sc">$</span>features[[<span class="dv">1</span>]]</span>
-<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a>rstac<span class="sc">::</span><span class="fu">assets_download</span>(item2,</span>
-<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a> <span class="st">"B08_10m"</span>,</span>
-<span id="cb22-16"><a href="#cb22-16" aria-hidden="true" tabindex="-1"></a> <span class="at">overwrite =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb22-17"><a href="#cb22-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">output_dir =</span> <span class="fu">tempdir</span>())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>###Item
-- id: S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103
-- collection: sentinel-2-l2a
-- bbox: xmin: 7.91150, ymin: 39.65610, xmax: 9.11544, ymax: 40.65080
-- datetime: 2025-06-03T10:10:41.024000Z
-- assets: B08_10m
-- item's fields: 
-assets, bbox, collection, geometry, id, links, properties, stac_extensions, stac_version, type</code></pre>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Time range for the pre-fire event (one week before the event)</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>pre_f  <span class="ot">=</span> <span class="st">"2025-06-03T01:00:00Z/2025-06-04T05:00:00Z"</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Time range for the post-fire event (about 10 days after the event)</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>post_f <span class="ot">=</span> <span class="st">"2025-06-21T01:00:00Z/2025-06-22T05:00:00Z"</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Bounding box (xmin, ymin, xmax, ymax) covering the burned area in Nuoro, Sardinia</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>search_bbox <span class="ot">=</span> <span class="fu">c</span>(<span class="fl">8.847198</span>, <span class="fl">40.193395</span>, <span class="fl">8.938865</span>, <span class="fl">40.24189</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Access the downloaded ZARR </span></span>
-<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>output_file2 <span class="ot">&lt;-</span> <span class="fu">file.path</span>(</span>
-<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tempdir</span>(),</span>
-<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">"e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr"</span>)</span>
-<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a><span class="fu">zarr_overview</span>(output_file2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Warning in open.connection(con, "rb"): cannot open file
-'/private/var/folders/s_/w16tjsxn3jgb8mlcdvdrk9b80000gn/T/RtmpSRE4LJ/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/.zarray':
-No such file or directory</code></pre>
-</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Acccess the Pre-Fire image using rstac</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>pre_stac_query <span class="ot">&lt;-</span> rstac<span class="sc">::</span><span class="fu">stac_search</span>(</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">q =</span> stac_source,</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">collections =</span> <span class="st">"sentinel-2-l2a"</span>,</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">bbox =</span> search_bbox,</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">datetime =</span> pre_f,</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">limit =</span> <span class="dv">999</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-error">
-<pre><code>Error in open.connection(con, "rb"): cannot open the connection</code></pre>
+<pre><code>Error: object 'stac_source' not found</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>executed_pre_stac_query <span class="ot">&lt;-</span> rstac<span class="sc">::</span><span class="fu">get_request</span>(pre_stac_query)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-error">
+<pre><code>Error: object 'pre_stac_query' not found</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Read Pre-Fire product using product URL</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>pre_s2_l2a_product <span class="ot">&lt;-</span> executed_pre_stac_query<span class="sc">$</span>features[[<span class="dv">1</span>]] <span class="sc">|&gt;</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">assets_select</span>(<span class="at">asset_names =</span> <span class="st">"product"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-error">
+<pre><code>Error: object 'executed_pre_stac_query' not found</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>pre_s2_l2a_product_url <span class="ot">&lt;-</span> pre_s2_l2a_product <span class="sc">|&gt;</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">assets_url</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-error">
+<pre><code>Error: object 'pre_s2_l2a_product' not found</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>pre_zarr_store <span class="ot">&lt;-</span> pre_s2_l2a_product_url <span class="sc">|&gt;</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">zarr_overview</span>(<span class="at">as_data_frame =</span> <span class="cn">TRUE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">derive_store_array</span>(pre_s2_l2a_product_url)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-error">
+<pre><code>Error in derive_store_array(zarr_overview(pre_s2_l2a_product_url, as_data_frame = TRUE), : could not find function "derive_store_array"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Quicklook for Pre-Fire RGB </span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>pre_zarr_store <span class="sc">|&gt;</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(array <span class="sc">==</span> <span class="st">"/quality/l2a_quicklook/r20m/tci"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(path) <span class="sc">|&gt;</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">read_zarr_array</span>() <span class="sc">|&gt;</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">aperm</span>(<span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">1</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rast</span>() <span class="sc">|&gt;</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plotRGB</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-error">
+<pre><code>Error in h(simpleError(msg, call)): error in evaluating the argument 'x' in selecting a method for function 'plotRGB': error in evaluating the argument 'x' in selecting a method for function 'rast': error in evaluating the argument 'a' in selecting a method for function 'aperm': error in evaluating the argument 'x' in selecting a method for function 'grepl': object 'pre_zarr_store' not found</code></pre>
 </div>
 </div>
+<p>⛔ Unfortunately we were not successful when trying to access the post-fire image: invalid char in json text.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Try to read it using product UR</span></span>
-<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>s2_l2a_product <span class="ot">&lt;-</span> executed_stac_query2<span class="sc">$</span>features[[<span class="dv">1</span>]] <span class="sc">|&gt;</span></span>
-<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">assets_select</span>(<span class="at">asset_names =</span> <span class="st">"product"</span>)</span>
-<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>s2_l2a_product_url2 <span class="ot">&lt;-</span> s2_l2a_product <span class="sc">|&gt;</span></span>
-<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">assets_url</span>()</span>
-<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>s2_l2a_product_url2</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] "https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr"</code></pre>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Acccess the Post-Fire image using rstac</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>post_stac_query <span class="ot">&lt;-</span> rstac<span class="sc">::</span><span class="fu">stac_search</span>(</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">q =</span> stac_source,</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">collections =</span> <span class="st">"sentinel-2-l2a"</span>,</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">bbox =</span> search_bbox,</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">datetime =</span> post_f,</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">limit =</span> <span class="dv">999</span></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-error">
+<pre><code>Error: object 'stac_source' not found</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>derive_store_array <span class="ot">&lt;-</span> <span class="cf">function</span>(store, product_url) {</span>
-<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>  store <span class="sc">|&gt;</span></span>
-<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">array =</span> <span class="fu">str_remove</span>(path, product_url)) <span class="sc">|&gt;</span></span>
-<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">relocate</span>(array, <span class="at">.before =</span> path)</span>
-<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>zarr_store <span class="ot">&lt;-</span> s2_l2a_product_url2 <span class="sc">|&gt;</span></span>
-<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">zarr_overview</span>(<span class="at">as_data_frame =</span> <span class="cn">TRUE</span>) <span class="sc">|&gt;</span></span>
-<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">derive_store_array</span>(s2_l2a_product_url2)</span>
-<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a>zarr_store</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>                                                 array
-1                           /conditions/geometry/angle
-2                            /conditions/geometry/band
-3                        /conditions/geometry/detector
-4                 /conditions/geometry/mean_sun_angles
-5   /conditions/geometry/mean_viewing_incidence_angles
-6                      /conditions/geometry/sun_angles
-7        /conditions/geometry/viewing_incidence_angles
-8                               /conditions/geometry/x
-9                               /conditions/geometry/y
-10        /conditions/mask/detector_footprint/r10m/b02
-11        /conditions/mask/detector_footprint/r10m/b03
-12        /conditions/mask/detector_footprint/r10m/b04
-13        /conditions/mask/detector_footprint/r10m/b08
-14          /conditions/mask/detector_footprint/r10m/x
-15          /conditions/mask/detector_footprint/r10m/y
-16        /conditions/mask/detector_footprint/r20m/b05
-17        /conditions/mask/detector_footprint/r20m/b06
-18        /conditions/mask/detector_footprint/r20m/b07
-19        /conditions/mask/detector_footprint/r20m/b11
-20        /conditions/mask/detector_footprint/r20m/b12
-21        /conditions/mask/detector_footprint/r20m/b8a
-22          /conditions/mask/detector_footprint/r20m/x
-23          /conditions/mask/detector_footprint/r20m/y
-24        /conditions/mask/detector_footprint/r60m/b01
-25        /conditions/mask/detector_footprint/r60m/b09
-26        /conditions/mask/detector_footprint/r60m/b10
-27          /conditions/mask/detector_footprint/r60m/x
-28          /conditions/mask/detector_footprint/r60m/y
-29        /conditions/mask/l1c_classification/r60m/b00
-30          /conditions/mask/l1c_classification/r60m/x
-31          /conditions/mask/l1c_classification/r60m/y
-32        /conditions/mask/l2a_classification/r20m/scl
-33          /conditions/mask/l2a_classification/r20m/x
-34          /conditions/mask/l2a_classification/r20m/y
-35        /conditions/mask/l2a_classification/r60m/scl
-36          /conditions/mask/l2a_classification/r60m/x
-37          /conditions/mask/l2a_classification/r60m/y
-38                /conditions/meteorology/cams/aod1240
-39                 /conditions/meteorology/cams/aod469
-40                 /conditions/meteorology/cams/aod550
-41                 /conditions/meteorology/cams/aod670
-42                 /conditions/meteorology/cams/aod865
-43               /conditions/meteorology/cams/bcaod550
-44               /conditions/meteorology/cams/duaod550
-45          /conditions/meteorology/cams/isobaricInhPa
-46               /conditions/meteorology/cams/latitude
-47              /conditions/meteorology/cams/longitude
-48                 /conditions/meteorology/cams/number
-49               /conditions/meteorology/cams/omaod550
-50               /conditions/meteorology/cams/ssaod550
-51                   /conditions/meteorology/cams/step
-52               /conditions/meteorology/cams/suaod550
-53                /conditions/meteorology/cams/surface
-54                   /conditions/meteorology/cams/time
-55             /conditions/meteorology/cams/valid_time
-56                      /conditions/meteorology/cams/z
-57         /conditions/meteorology/ecmwf/isobaricInhPa
-58              /conditions/meteorology/ecmwf/latitude
-59             /conditions/meteorology/ecmwf/longitude
-60                   /conditions/meteorology/ecmwf/msl
-61                /conditions/meteorology/ecmwf/number
-62                     /conditions/meteorology/ecmwf/r
-63                  /conditions/meteorology/ecmwf/step
-64               /conditions/meteorology/ecmwf/surface
-65                  /conditions/meteorology/ecmwf/tco3
-66                  /conditions/meteorology/ecmwf/tcwv
-67                  /conditions/meteorology/ecmwf/time
-68                   /conditions/meteorology/ecmwf/u10
-69                   /conditions/meteorology/ecmwf/v10
-70            /conditions/meteorology/ecmwf/valid_time
-71                  /measurements/reflectance/r10m/b02
-72                  /measurements/reflectance/r10m/b03
-73                  /measurements/reflectance/r10m/b04
-74                  /measurements/reflectance/r10m/b08
-75                    /measurements/reflectance/r10m/x
-76                    /measurements/reflectance/r10m/y
-77                  /measurements/reflectance/r20m/b01
-78                  /measurements/reflectance/r20m/b02
-79                  /measurements/reflectance/r20m/b03
-80                  /measurements/reflectance/r20m/b04
-81                  /measurements/reflectance/r20m/b05
-82                  /measurements/reflectance/r20m/b06
-83                  /measurements/reflectance/r20m/b07
-84                  /measurements/reflectance/r20m/b11
-85                  /measurements/reflectance/r20m/b12
-86                  /measurements/reflectance/r20m/b8a
-87                    /measurements/reflectance/r20m/x
-88                    /measurements/reflectance/r20m/y
-89                  /measurements/reflectance/r60m/b01
-90                  /measurements/reflectance/r60m/b02
-91                  /measurements/reflectance/r60m/b03
-92                  /measurements/reflectance/r60m/b04
-93                  /measurements/reflectance/r60m/b05
-94                  /measurements/reflectance/r60m/b06
-95                  /measurements/reflectance/r60m/b07
-96                  /measurements/reflectance/r60m/b09
-97                  /measurements/reflectance/r60m/b11
-98                  /measurements/reflectance/r60m/b12
-99                  /measurements/reflectance/r60m/b8a
-100                   /measurements/reflectance/r60m/x
-101                   /measurements/reflectance/r60m/y
-102                       /quality/atmosphere/r10m/aot
-103                       /quality/atmosphere/r10m/wvp
-104                         /quality/atmosphere/r10m/x
-105                         /quality/atmosphere/r10m/y
-106                       /quality/atmosphere/r20m/aot
-107                       /quality/atmosphere/r20m/wvp
-108                         /quality/atmosphere/r20m/x
-109                         /quality/atmosphere/r20m/y
-110                       /quality/atmosphere/r60m/aot
-111                       /quality/atmosphere/r60m/wvp
-112                         /quality/atmosphere/r60m/x
-113                         /quality/atmosphere/r60m/y
-114                   /quality/l2a_quicklook/r10m/band
-115                    /quality/l2a_quicklook/r10m/tci
-116                      /quality/l2a_quicklook/r10m/x
-117                      /quality/l2a_quicklook/r10m/y
-118                   /quality/l2a_quicklook/r20m/band
-119                    /quality/l2a_quicklook/r20m/tci
-120                      /quality/l2a_quicklook/r20m/x
-121                      /quality/l2a_quicklook/r20m/y
-122                   /quality/l2a_quicklook/r60m/band
-123                    /quality/l2a_quicklook/r60m/tci
-124                      /quality/l2a_quicklook/r60m/x
-125                      /quality/l2a_quicklook/r60m/y
-126                             /quality/mask/r10m/b02
-127                             /quality/mask/r10m/b03
-128                             /quality/mask/r10m/b04
-129                             /quality/mask/r10m/b08
-130                               /quality/mask/r10m/x
-131                               /quality/mask/r10m/y
-132                             /quality/mask/r20m/b05
-133                             /quality/mask/r20m/b06
-134                             /quality/mask/r20m/b07
-135                             /quality/mask/r20m/b11
-136                             /quality/mask/r20m/b12
-137                             /quality/mask/r20m/b8a
-138                               /quality/mask/r20m/x
-139                               /quality/mask/r20m/y
-140                             /quality/mask/r60m/b01
-141                             /quality/mask/r60m/b09
-142                             /quality/mask/r60m/b10
-143                               /quality/mask/r60m/x
-144                               /quality/mask/r60m/y
-145                     /quality/probability/r20m/band
-146                      /quality/probability/r20m/cld
-147                      /quality/probability/r20m/snw
-148                        /quality/probability/r20m/x
-149                        /quality/probability/r20m/y
-                                                                                                                                                                                                                      path
-1                           https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/geometry/angle
-2                            https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/geometry/band
-3                        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/geometry/detector
-4                 https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/geometry/mean_sun_angles
-5   https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/geometry/mean_viewing_incidence_angles
-6                      https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/geometry/sun_angles
-7        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/geometry/viewing_incidence_angles
-8                               https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/geometry/x
-9                               https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/geometry/y
-10        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r10m/b02
-11        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r10m/b03
-12        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r10m/b04
-13        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r10m/b08
-14          https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r10m/x
-15          https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r10m/y
-16        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r20m/b05
-17        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r20m/b06
-18        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r20m/b07
-19        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r20m/b11
-20        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r20m/b12
-21        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r20m/b8a
-22          https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r20m/x
-23          https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r20m/y
-24        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r60m/b01
-25        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r60m/b09
-26        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r60m/b10
-27          https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r60m/x
-28          https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/detector_footprint/r60m/y
-29        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/l1c_classification/r60m/b00
-30          https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/l1c_classification/r60m/x
-31          https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/l1c_classification/r60m/y
-32        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/l2a_classification/r20m/scl
-33          https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/l2a_classification/r20m/x
-34          https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/l2a_classification/r20m/y
-35        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/l2a_classification/r60m/scl
-36          https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/l2a_classification/r60m/x
-37          https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/mask/l2a_classification/r60m/y
-38                https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/aod1240
-39                 https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/aod469
-40                 https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/aod550
-41                 https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/aod670
-42                 https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/aod865
-43               https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/bcaod550
-44               https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/duaod550
-45          https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/isobaricInhPa
-46               https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/latitude
-47              https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/longitude
-48                 https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/number
-49               https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/omaod550
-50               https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/ssaod550
-51                   https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/step
-52               https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/suaod550
-53                https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/surface
-54                   https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/time
-55             https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/valid_time
-56                      https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/cams/z
-57         https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/ecmwf/isobaricInhPa
-58              https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/ecmwf/latitude
-59             https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/ecmwf/longitude
-60                   https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/ecmwf/msl
-61                https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/ecmwf/number
-62                     https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/ecmwf/r
-63                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/ecmwf/step
-64               https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/ecmwf/surface
-65                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/ecmwf/tco3
-66                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/ecmwf/tcwv
-67                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/ecmwf/time
-68                   https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/ecmwf/u10
-69                   https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/ecmwf/v10
-70            https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/conditions/meteorology/ecmwf/valid_time
-71                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r10m/b02
-72                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r10m/b03
-73                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r10m/b04
-74                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r10m/b08
-75                    https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r10m/x
-76                    https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r10m/y
-77                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r20m/b01
-78                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r20m/b02
-79                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r20m/b03
-80                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r20m/b04
-81                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r20m/b05
-82                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r20m/b06
-83                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r20m/b07
-84                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r20m/b11
-85                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r20m/b12
-86                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r20m/b8a
-87                    https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r20m/x
-88                    https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r20m/y
-89                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r60m/b01
-90                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r60m/b02
-91                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r60m/b03
-92                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r60m/b04
-93                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r60m/b05
-94                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r60m/b06
-95                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r60m/b07
-96                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r60m/b09
-97                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r60m/b11
-98                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r60m/b12
-99                  https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r60m/b8a
-100                   https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r60m/x
-101                   https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/measurements/reflectance/r60m/y
-102                       https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/atmosphere/r10m/aot
-103                       https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/atmosphere/r10m/wvp
-104                         https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/atmosphere/r10m/x
-105                         https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/atmosphere/r10m/y
-106                       https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/atmosphere/r20m/aot
-107                       https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/atmosphere/r20m/wvp
-108                         https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/atmosphere/r20m/x
-109                         https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/atmosphere/r20m/y
-110                       https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/atmosphere/r60m/aot
-111                       https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/atmosphere/r60m/wvp
-112                         https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/atmosphere/r60m/x
-113                         https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/atmosphere/r60m/y
-114                   https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/l2a_quicklook/r10m/band
-115                    https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/l2a_quicklook/r10m/tci
-116                      https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/l2a_quicklook/r10m/x
-117                      https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/l2a_quicklook/r10m/y
-118                   https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/l2a_quicklook/r20m/band
-119                    https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/l2a_quicklook/r20m/tci
-120                      https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/l2a_quicklook/r20m/x
-121                      https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/l2a_quicklook/r20m/y
-122                   https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/l2a_quicklook/r60m/band
-123                    https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/l2a_quicklook/r60m/tci
-124                      https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/l2a_quicklook/r60m/x
-125                      https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/l2a_quicklook/r60m/y
-126                             https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r10m/b02
-127                             https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r10m/b03
-128                             https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r10m/b04
-129                             https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r10m/b08
-130                               https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r10m/x
-131                               https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r10m/y
-132                             https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r20m/b05
-133                             https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r20m/b06
-134                             https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r20m/b07
-135                             https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r20m/b11
-136                             https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r20m/b12
-137                             https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r20m/b8a
-138                               https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r20m/x
-139                               https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r20m/y
-140                             https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r60m/b01
-141                             https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r60m/b09
-142                             https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r60m/b10
-143                               https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r60m/x
-144                               https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/mask/r60m/y
-145                     https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/probability/r20m/band
-146                      https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/probability/r20m/cld
-147                      https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/probability/r20m/snw
-148                        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/probability/r20m/x
-149                        https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/03/products/cpm_v256/S2A_MSIL2A_20250603T101041_N0511_R022_T32TMK_20250603T134103.zarr/quality/probability/r20m/y
-    nchunks  data_type compressor          dim    chunk_dim
-1         1 unicode224      blosc            2            2
-2         1  unicode96      blosc           13           13
-3         1      int64      blosc            5            5
-4         1    float64      blosc            2            2
-5         1    float64      blosc        13, 2        13, 2
-6         1    float64      blosc    2, 23, 23    2, 23, 23
-7         2    float64      blosc 13, 5, 2.... 7, 5, 2,....
-8         1      int64      blosc           23           23
-9         1      int64      blosc           23           23
-10       36      uint8      blosc 10980, 10980   1830, 1830
-11       36      uint8      blosc 10980, 10980   1830, 1830
-12       36      uint8      blosc 10980, 10980   1830, 1830
-13       36      uint8      blosc 10980, 10980   1830, 1830
-14        1      int64      blosc        10980        10980
-15        1      int64      blosc        10980        10980
-16       36      uint8      blosc   5490, 5490     915, 915
-17       36      uint8      blosc   5490, 5490     915, 915
-18       36      uint8      blosc   5490, 5490     915, 915
-19       36      uint8      blosc   5490, 5490     915, 915
-20       36      uint8      blosc   5490, 5490     915, 915
-21       36      uint8      blosc   5490, 5490     915, 915
-22        1      int64      blosc         5490         5490
-23        1      int64      blosc         5490         5490
-24       36      uint8      blosc   1830, 1830     305, 305
-25       36      uint8      blosc   1830, 1830     305, 305
-26       36      uint8      blosc   1830, 1830     305, 305
-27        1      int64      blosc         1830         1830
-28        1      int64      blosc         1830         1830
-29       36      uint8      blosc   1830, 1830     305, 305
-30        1      int64      blosc         1830         1830
-31        1      int64      blosc         1830         1830
-32       36      uint8      blosc   5490, 5490     915, 915
-33        1      int64      blosc         5490         5490
-34        1      int64      blosc         5490         5490
-35       36      uint8      blosc   1830, 1830     305, 305
-36        1      int64      blosc         1830         1830
-37        1      int64      blosc         1830         1830
-38        1    float32      blosc         9, 9         9, 9
-39        1    float32      blosc         9, 9         9, 9
-40        1    float32      blosc         9, 9         9, 9
-41        1    float32      blosc         9, 9         9, 9
-42        1    float32      blosc         9, 9         9, 9
-43        1    float32      blosc         9, 9         9, 9
-44        1    float32      blosc         9, 9         9, 9
-45        1    float64       &lt;NA&gt;                          
-46        1    float64      blosc            9            9
-47        1    float64      blosc            9            9
-48        1      int64       &lt;NA&gt;                          
-49        1    float32      blosc         9, 9         9, 9
-50        1    float32      blosc         9, 9         9, 9
-51        1      int64       &lt;NA&gt;                          
-52        1    float32      blosc         9, 9         9, 9
-53        1    float64       &lt;NA&gt;                          
-54        1      int64       &lt;NA&gt;                          
-55        1      int64       &lt;NA&gt;                          
-56        1    float32      blosc         9, 9         9, 9
-57        1    float64       &lt;NA&gt;                          
-58        1    float64      blosc            9            9
-59        1    float64      blosc            9            9
-60        1    float32      blosc         9, 9         9, 9
-61        1      int64       &lt;NA&gt;                          
-62        1    float32      blosc         9, 9         9, 9
-63        1      int64       &lt;NA&gt;                          
-64        1    float64       &lt;NA&gt;                          
-65        1    float32      blosc         9, 9         9, 9
-66        1    float32      blosc         9, 9         9, 9
-67        1      int64       &lt;NA&gt;                          
-68        1    float32      blosc         9, 9         9, 9
-69        1    float32      blosc         9, 9         9, 9
-70        1      int64       &lt;NA&gt;                          
-71       36     uint16      blosc 10980, 10980   1830, 1830
-72       36     uint16      blosc 10980, 10980   1830, 1830
-73       36     uint16      blosc 10980, 10980   1830, 1830
-74       36     uint16      blosc 10980, 10980   1830, 1830
-75        1      int64      blosc        10980        10980
-76        1      int64      blosc        10980        10980
-77       36     uint16      blosc   5490, 5490     915, 915
-78       36     uint16      blosc   5490, 5490     915, 915
-79       36     uint16      blosc   5490, 5490     915, 915
-80       36     uint16      blosc   5490, 5490     915, 915
-81       36     uint16      blosc   5490, 5490     915, 915
-82       36     uint16      blosc   5490, 5490     915, 915
-83       36     uint16      blosc   5490, 5490     915, 915
-84       36     uint16      blosc   5490, 5490     915, 915
-85       36     uint16      blosc   5490, 5490     915, 915
-86       36     uint16      blosc   5490, 5490     915, 915
-87        1      int64      blosc         5490         5490
-88        1      int64      blosc         5490         5490
-89       36     uint16      blosc   1830, 1830     305, 305
-90       36     uint16      blosc   1830, 1830     305, 305
-91       36     uint16      blosc   1830, 1830     305, 305
-92       36     uint16      blosc   1830, 1830     305, 305
-93       36     uint16      blosc   1830, 1830     305, 305
-94       36     uint16      blosc   1830, 1830     305, 305
-95       36     uint16      blosc   1830, 1830     305, 305
-96       36     uint16      blosc   1830, 1830     305, 305
-97       36     uint16      blosc   1830, 1830     305, 305
-98       36     uint16      blosc   1830, 1830     305, 305
-99       36     uint16      blosc   1830, 1830     305, 305
-100       1      int64      blosc         1830         1830
-101       1      int64      blosc         1830         1830
-102      36     uint16      blosc 10980, 10980   1830, 1830
-103      36     uint16      blosc 10980, 10980   1830, 1830
-104       1      int64      blosc        10980        10980
-105       1      int64      blosc        10980        10980
-106      36     uint16      blosc   5490, 5490     915, 915
-107      36     uint16      blosc   5490, 5490     915, 915
-108       1      int64      blosc         5490         5490
-109       1      int64      blosc         5490         5490
-110      36     uint16      blosc   1830, 1830     305, 305
-111      36     uint16      blosc   1830, 1830     305, 305
-112       1      int64      blosc         1830         1830
-113       1      int64      blosc         1830         1830
-114       1      int64      blosc            3            3
-115     108      uint8      blosc 3, 10980.... 1, 1830,....
-116       1      int64      blosc        10980        10980
-117       1      int64      blosc        10980        10980
-118       1      int64      blosc            3            3
-119     108      uint8      blosc 3, 5490,....  1, 915, 915
-120       1      int64      blosc         5490         5490
-121       1      int64      blosc         5490         5490
-122       1      int64      blosc            3            3
-123     108      uint8      blosc 3, 1830,....  1, 305, 305
-124       1      int64      blosc         1830         1830
-125       1      int64      blosc         1830         1830
-126      36      uint8      blosc 10980, 10980   1830, 1830
-127      36      uint8      blosc 10980, 10980   1830, 1830
-128      36      uint8      blosc 10980, 10980   1830, 1830
-129      36      uint8      blosc 10980, 10980   1830, 1830
-130       1      int64      blosc        10980        10980
-131       1      int64      blosc        10980        10980
-132      36      uint8      blosc   5490, 5490     915, 915
-133      36      uint8      blosc   5490, 5490     915, 915
-134      36      uint8      blosc   5490, 5490     915, 915
-135      36      uint8      blosc   5490, 5490     915, 915
-136      36      uint8      blosc   5490, 5490     915, 915
-137      36      uint8      blosc   5490, 5490     915, 915
-138       1      int64      blosc         5490         5490
-139       1      int64      blosc         5490         5490
-140      36      uint8      blosc   1830, 1830     305, 305
-141      36      uint8      blosc   1830, 1830     305, 305
-142      36      uint8      blosc   1830, 1830     305, 305
-143       1      int64      blosc         1830         1830
-144       1      int64      blosc         1830         1830
-145       1      int64       &lt;NA&gt;                          
-146      36      uint8      blosc   5490, 5490     915, 915
-147      36      uint8      blosc   5490, 5490     915, 915
-148       1      int64      blosc         5490         5490
-149       1      int64      blosc         5490         5490</code></pre>
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>executed_post_stac_query <span class="ot">&lt;-</span> rstac<span class="sc">::</span><span class="fu">get_request</span>(post_stac_query)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-error">
+<pre><code>Error: object 'post_stac_query' not found</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>executed_post_stac_query</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-error">
+<pre><code>Error: object 'executed_post_stac_query' not found</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Read Post-Fire product using product URL</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>post_s2_l2a_product <span class="ot">&lt;-</span> executed_post_stac_query<span class="sc">$</span>features[[<span class="dv">1</span>]] <span class="sc">|&gt;</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">assets_select</span>(<span class="at">asset_names =</span> <span class="st">"product"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-error">
+<pre><code>Error: object 'executed_post_stac_query' not found</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>post_s2_l2a_product_url <span class="ot">&lt;-</span> post_s2_l2a_product <span class="sc">|&gt;</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">assets_url</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-error">
+<pre><code>Error: object 'post_s2_l2a_product' not found</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>post_zarr_store <span class="ot">&lt;-</span> post_s2_l2a_product_url <span class="sc">|&gt;</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">zarr_overview</span>(<span class="at">as_data_frame =</span> <span class="cn">TRUE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">derive_store_array</span>(post_s2_l2a_product_url)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-error">
+<pre><code>Error in derive_store_array(zarr_overview(post_s2_l2a_product_url, as_data_frame = TRUE), : could not find function "derive_store_array"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Quicklook for Pre-Fire RGB </span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>post_zarr_store <span class="sc">|&gt;</span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(array <span class="sc">==</span> <span class="st">"/quality/l2a_quicklook/r20m/tci"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(path) <span class="sc">|&gt;</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">read_zarr_array</span>() <span class="sc">|&gt;</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">aperm</span>(<span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">1</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rast</span>() <span class="sc">|&gt;</span></span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plotRGB</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-error">
+<pre><code>Error in h(simpleError(msg, call)): error in evaluating the argument 'x' in selecting a method for function 'plotRGB': error in evaluating the argument 'x' in selecting a method for function 'rast': error in evaluating the argument 'a' in selecting a method for function 'aperm': error in evaluating the argument 'x' in selecting a method for function 'grepl': object 'post_zarr_store' not found</code></pre>
 </div>
 </div>
-</section>
 </section>
 
 </main>

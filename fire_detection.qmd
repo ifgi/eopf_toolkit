@@ -145,7 +145,7 @@ post_zarr_store <- post_s2_l2a_product_url |>
   zarr_overview(as_data_frame = TRUE) |>
   derive_store_array(post_s2_l2a_product_url)
 
-# Quicklook for Pre-Fire RGB 
+# Quicklook for Post-Fire RGB 
 post_zarr_store |>
   filter(array == "/quality/l2a_quicklook/r20m/tci") |>
   pull(path) |>

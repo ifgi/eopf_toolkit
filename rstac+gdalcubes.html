@@ -2350,7 +2350,7 @@ Bands:
 </section>
 <section id="create-a-cube-view" class="level3">
 <h3 class="anchored" data-anchor-id="create-a-cube-view">Create a cube view</h3>
-<p>After collecting all available images in an image collection, we will now create a raster cube. For this, we first need to define a cube view, which specifies the spatio-temporal geometry of the raster cube (spatial resolution, extent, temporal resolution, time extent, etc.). For our example, we will select a small subset (10 x 10 km) of the imagery on which we will later compute an NDVI. We collect the spatio-temporal extent in a list, which we then pass to <code>cube_view()</code>. We also specify a spatial resolution of 10m and a temporal resolution of 1 day. While the Sentinel-2 satellites have a revisit time of ~5 days, swath overlaps may lead to higher temporal resolution for certain pixels, so we define 1 day here to get as much data as we can. Even for the same day, swath overlaps between Sentinel-2 A and B may lead to certain locations being recorded twice. Thus, we also have to define an aggregation method. Here we use “first”. In the unlikely case that we get data from two images per day at certain location, we simply choose the first one we get for that day. Days and locations with no data are handled by gdalcubes as no-data values.</p>
+<p>After collecting all available images in an image collection, we will now create a raster cube. For this, we first need to define a cube view, which specifies the spatio-temporal geometry of the raster cube (spatial resolution, extent, temporal resolution, time extent, etc.). For our example, we will select a small subset (10 x 10 km) of the imagery on which we will later compute an NDVI. We collect the spatio-temporal extent in a list, which we then pass to <code>cube_view()</code>. We also specify a spatial resolution of 10m and a temporal resolution of 1 day. While the Sentinel-2 satellites have a revisit time of ~5 days, swath overlaps may lead to higher temporal resolution for certain pixels, so we define 1 day here to get as much data as we can. Even for the same day, swath overlaps between Sentinel-2 A and B may lead to certain locations being recorded twice. Thus, we also have to define an aggregation method. Here we use “first”. In the unlikely case that we get data from two images per day at a certain location, we simply choose the first one we get for that day. Days and locations without images are handled by gdalcubes as no-data values.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Collect spatio-temporal extent in a list </span></span>
 <span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>ext <span class="ot">=</span> <span class="fu">list</span>()</span>
@@ -2366,13 +2366,7 @@ Bands:
 <span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>              <span class="at">aggregation=</span><span class="st">&quot;first&quot;</span>,</span>
 <span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>              <span class="at">extent=</span>ext)</span>
 <span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a><span class="co">#v = cube_view(srs=&quot;EPSG:32632&quot;, dx=100, dy=100, dt=&quot;P1D&quot;,</span></span>
-<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a><span class="co">#              aggregation=&quot;median&quot;,</span></span>
-<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a><span class="co">#              extent=list(t0 = &quot;2025-06-01&quot;, t1 = &quot;2025-06-30&quot;,</span></span>
-<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a><span class="co">#                          left=bbox_utm[&quot;xmin&quot;], right=bbox_utm[&quot;xmax&quot;],</span></span>
-<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a><span class="co">#                          top=bbox_utm[&quot;ymax&quot;], bottom=bbox_utm[&quot;ymin&quot;]))</span></span>
-<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-21"><a href="#cb18-21" aria-hidden="true" tabindex="-1"></a>v</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>v</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>A data cube view object
 
@@ -2391,7 +2385,7 @@ Spatial resampling method: &quot;near&quot;</code></pre>
 </section>
 <section id="create-cube-and-plot" class="level3">
 <h3 class="anchored" data-anchor-id="create-cube-and-plot">Create cube and plot</h3>
-<p>Now, we create a raster cube using the previously defined cube view. We then select the red and near-infrared bands, compute and NDVI, and aggregate the results for one month using the median. This means, that for all locations where we received data on more than one day in that month, the median of all values of that pixel throughout the month is taken -&gt; a very basic, but easy and straightforward way to select a value that is robust against outliers (e.g. clouds). As a result, we create an aggregate image of the specified subset that combines all information gathered there in one month to include as few na-values and clouds as possible.</p>
+<p>Now, we create a raster cube using the previously defined cube view. We then select the red and near-infrared bands, compute and NDVI, and aggregate the results for one month using the median. This means, that for all locations where we received data on more than one day in that month, the median of all values of that pixel throughout the month is taken –&gt; a very basic, but easy and straightforward way to select a value that is robust against outliers (e.g. clouds). As a result, we create an aggregate image of the specified subset that combines all information gathered there in one month to include as few na-values and clouds as possible.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">gdalcubes_options</span>(<span class="at">parallel=</span><span class="dv">4</span>)</span>
 <span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="fu">system.time</span>(<span class="fu">raster_cube</span>(s2_collection, v) <span class="sc">|&gt;</span></span>
@@ -2408,13 +2402,8 @@ Spatial resampling method: &quot;near&quot;</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-   0.75    0.11   24.81 </code></pre>
+   0.72    0.09   26.21 </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co">#system.time(raster_cube(s2_collection, v) |&gt;</span></span>
-<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="co">#  select_bands(c(&quot;B02_10m&quot;,&quot;B03_10m&quot;,&quot;B04_10m&quot;)) |&gt;</span></span>
-<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a><span class="co">#  reduce_time(c(&quot;median(B02_10m)&quot;, &quot;median(B03_10m)&quot;, &quot;median(B04_10m)&quot;)) |&gt;</span></span>
-<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="co">#  plot(rgb = 3:1, zlim = c(0,3000)))</span></span>
-<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a><span class="co">#  #write_tif(&quot;eopf_s2_munsterland_june2025_RGB_median_100m.tif&quot;))</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 

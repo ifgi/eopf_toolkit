@@ -100,7 +100,7 @@ s2_collection
 ### Create a cube view
 After collecting all available images in an image collection, we will now create a raster cube. For this, we first need to define a cube view, which specifies the spatio-temporal geometry of the raster cube (spatial resolution, extent, temporal resolution, time extent, etc.).
 For our example, we will select a small subset (10 x 10 km) north of the city of Muenster, which includes the "Rieselfelder" bird sanctuary. 
-We collect the spatio-temporal extent in a list, which we then pass to `cube_view()`. We also specify a spatial resolution of 10m and a temporal resolution of 1 day. While the Sentinel-2 satellites have a revisit time of ~5 days, swath overlaps may lead to higher temporal resolution for certain pixels, so we define 1 day here to get as much data as we can. Even for the same day, swath overlaps between Sentinel-2 A and B may lead to certain locations being recorded twice. Thus, we also have to define an aggregation method. Here we use "first". In the unlikely case that we get data from two images per day at a certain location, we simply choose the first one we get for that day. 
+We collect the spatio-temporal extent in a list, which we then pass to `cube_view()`. We also specify a spatial resolution of 10m and a temporal resolution of 1 day. While the Sentinel-2 satellites have a revisit time of ~5 days (plus we limited the number of items received in our STAC request), swath overlaps may in principal lead to higher temporal resolution for certain pixels, so we define 1 day here to get as much data from the image collection as we can. Even for the same day, swath overlaps between Sentinel-2 A and B may lead to certain locations being recorded twice. Thus, we also have to define an aggregation method. Here we use "first". In the unlikely case that we get data from two images per day at a certain location, we simply choose the first one we get for that day. 
 Days and locations without images are handled by gdalcubes as no-data values.
 
 ```{r}
@@ -197,7 +197,7 @@ ndvi2 <- raster_cube(s2_collection2, v2) |>
 ndvi_april <- rast(write_tif(ndvi2))
 ndvi_june <- rast(write_tif(ndvi))
 ndvi_change <- ndvi_june - ndvi_april
-plot(ndvi_change, main = "NDVI Change June 2025 - April 2025")
+plot(ndvi_change, main = "NDVI Change April 2025 - June 2025")
 
 
 

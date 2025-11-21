@@ -75,15 +75,20 @@ stac_source = stac("https://stac.core.eopf.eodc.eu/")
 
 items
 
-###--> adapt download function to adapt the URL such that it prepends a necessary prefix, and points to the .zarr file
+
+```
+
+As you can see, we have received 5 STAC items matching our search criteria (we would have received more items, but we have set the limit to 5).
+Next, we need to define a function that adapts the asset hrefs of the received STAC items:
+
+```{r}
+###--> adapt download URL such that it prepends a necessary prefix, and points to the .zarr file
 f = function(href) {
   return(paste0("ZARR:\"/vsicurl/", gsub(".zarr/", ".zarr\"/", href)))
 }
 ```
 
-As you can see, we have received 5 STAC items matching our search criteria (we would have received more items, but we have set the limit to 5).
-
-*Why adapt the function?*
+*Why adapt the URL?*
 
 The items returned from our STAC request have asset hrefs like this:
 ```{r}

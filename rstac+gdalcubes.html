@@ -2299,13 +2299,15 @@ AOT_10m, B01_20m, B02_10m, B03_10m, B04_10m, B05_20m, B06_20m, B07_20m, B08_10m,
 - item&#39;s fields: 
 assets, bbox, collection, geometry, id, links, properties, stac_extensions, stac_version, type</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="do">###--&gt; adapt download function to adapt the URL such that it prepends a necessary prefix, and points to the .zarr file</span></span>
+</div>
+<p>As you can see, we have received 5 STAC items matching our search criteria (we would have received more items, but we have set the limit to 5). Next, we need to define a function that adapts the asset hrefs of the received STAC items:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="do">###--&gt; adapt download URL such that it prepends a necessary prefix, and points to the .zarr file</span></span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>f <span class="ot">=</span> <span class="cf">function</span>(href) {</span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">paste0</span>(<span class="st">&quot;ZARR:</span><span class="sc">\&quot;</span><span class="st">/vsicurl/&quot;</span>, <span class="fu">gsub</span>(<span class="st">&quot;.zarr/&quot;</span>, <span class="st">&quot;.zarr</span><span class="sc">\&quot;</span><span class="st">/&quot;</span>, href)))</span>
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>As you can see, we have received 5 STAC items matching our search criteria (we would have received more items, but we have set the limit to 5).</p>
-<p><em>Why adapt the function?</em></p>
+<p><em>Why adapt the URL?</em></p>
 <p>The items returned from our STAC request have asset hrefs like this:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>items<span class="sc">$</span>features[[<span class="dv">1</span>]]<span class="sc">$</span>assets<span class="sc">$</span>B02_10m<span class="sc">$</span>href </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>

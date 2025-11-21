@@ -2197,7 +2197,7 @@ vertical-align: -.125em;
 
 <section id="introduction" class="level3">
 <h3 class="anchored" data-anchor-id="introduction">Introduction</h3>
-<p>This notebook demonstrates how to create a raster cube from STAC items from the EOPF Sentinel Zarr Samples Service using the <code>rstac</code> and <code>gdalcubes</code> packages in R. We will search for Sentinel-2 images roughly covering the Münsterland region in Germany for June 2025, and retrieve corresponding STAC items with <code>rstac</code>. We will then use <code>gdalcubes</code> to create a raster cube and visualize an RGB plot aggregating the data to one image (using median) and resampling to 100m spatial resolution.</p>
+<p>This notebook demonstrates how to create a raster cube from STAC items from the EOPF Sentinel Zarr Samples Service using the <code>rstac</code> and <code>gdalcubes</code> packages in R. We will search for Sentinel-2 images roughly covering the Münsterland region in Germany for June 2025, and retrieve corresponding STAC items with <code>rstac</code>. We will then use <code>gdalcubes</code> to create a raster cube and visualize an RGB plot aggregating the data to one image (using median) and compute the NDVI for that image.</p>
 <p>The <code>gdalcubes</code> package offers powerfull functionality to create regular raster cubes from irregular image collections and manages issues such as differing spatial and temporal resolutions, partial spatial overlap or differing projections etc. It first collects images in so-called <em>image collections</em> and creates data cubes from them, where the spatiotemporal geometry is defined via a <em>data cube view</em>. It also has a function to directly create <em>image collections</em> from STAC items, which we will use here. For details on the functionality and concepts, see the <a href="https://gdalcubes.github.io/">gdalcubes documentation</a> and specifically <a href="https://gdalcubes.github.io/source/tutorials/vignettes/gc02_AWS_Sentinel2.html">Marius´ tutorial</a> on the example of the Sentinel-2 COG catalog on Amazon Web Services (AWS).</p>
 </section>
 <section id="what-we-will-learn" class="level3">
@@ -2246,11 +2246,24 @@ Note
 </section>
 <section id="create-image-collection-from-stac-items" class="level3">
 <h3 class="anchored" data-anchor-id="create-image-collection-from-stac-items">Create image collection from STAC items</h3>
-<p>We can convert STAC items received through <code>rstac</code> to <code>gdalcubes</code> image collections using the function <code>stac_image_collection()</code>. From there on, we can create raster cubes as usual. See also <a href="https://gdalcubes.github.io/source/tutorials/vignettes/gc02_AWS_Sentinel2.html">Marius´ tutorial</a>. For using this with the EOPF Zarr STAC API, we need to adapt the download function a little bit (see below).</p>
-<p>Finding STAC items from EOPF STAC API with <code>rstac</code>:</p>
+<p>We can convert STAC items received through <code>rstac</code> to <code>gdalcubes</code> image collections using the function <code>stac_image_collection()</code>. From there on, we can create raster cubes using the usual workflow.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This notebook is only meant to showcase a simple example of the usage of <code>gdalcubes</code> with STAC items. It does not contain details on the concepts and workflow of creating and further processing raster cubes. For a more in-depth introduction, please refer to the <a href="https://gdalcubes.github.io/">gdalcubes documentation</a>. This also contains a number of tutorials that explain the capabilites and potential applicatoins of the package.</p>
+</div>
+</div>
+<p>We start with a search for image data in the EOPF Zarr Samples Service. To interact with the EOPF STAC API, we will use <code>rstac</code>:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Using a bbox roughly for &quot;Münsterland&quot; and June 2025.</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co"># For the stac request, I need the bbox in WGS84</span></span>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Using a bbox roughly for &quot;Münsterland&quot; and the month June 2025.</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co"># For the stac request, we need the bbox in WGS84</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co"># We limit the no of results to 5 for testing purposes</span></span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rstac)</span>
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gdalcubes)</span>
@@ -2291,18 +2304,20 @@ assets, bbox, collection, geometry, id, links, properties, stac_extensions, stac
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">paste0</span>(<span class="st">&quot;ZARR:</span><span class="sc">\&quot;</span><span class="st">/vsicurl/&quot;</span>, <span class="fu">gsub</span>(<span class="st">&quot;.zarr/&quot;</span>, <span class="st">&quot;.zarr</span><span class="sc">\&quot;</span><span class="st">/&quot;</span>, href)))</span>
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Why adapt the function? The items returned from our STAC request have asset hrefs like this:</p>
+<p>As you can see, we have received 5 STAC items matching our search criteria (we would have received more items, but we have set the limit to 5).</p>
+<p><em>Why adapt the function?</em></p>
+<p>The items returned from our STAC request have asset hrefs like this:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>items<span class="sc">$</span>features[[<span class="dv">1</span>]]<span class="sc">$</span>assets<span class="sc">$</span>B02_10m<span class="sc">$</span>href </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] &quot;https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/30/products/cpm_v256/S2C_MSIL2A_20250630T104041_N0511_R008_T32UMD_20250630T161206.zarr/measurements/reflectance/r10m/b02&quot;</code></pre>
 </div>
 </div>
-<p>In order for GDAL to use the correct driver, we need the URL with a prefix for the correct Zarr driver, see tutorial: https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/ Also, we want it to point directly to the .zarr file the function above replaces the href by one that directs directly there. Since you can give this as an argument to <code>stac_image_collection()</code>, it will be applied to all assets.</p>
-<p>Create image collection from STAC items:</p>
+<p>In order for GDAL to use the correct driver, we need the URL with a prefix for the correct Zarr driver, see tutorial: https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/ Also, we want it to point directly to the .zarr file. The function above replaces the href by one that links directly there and prepends the required prefix. Since you can give this function as an argument to <code>stac_image_collection()</code>, it will be applied to all assets automatically.</p>
+<p>Now we can create an image collection from the received STAC items:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># manually set argument &quot;srs&quot;, because gdalcubes looks for proj:epsg, but in the collection there is only proj:code</span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="co"># also: since the items found are not all in the same UTM zone, I want to filter them first</span></span>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Manually set argument &quot;srs&quot;, because gdalcubes looks for proj:epsg, but in the collection there is only proj:code</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Also: since the items found are not all in the same UTM zone, we will filter them them first to have all images in one SRS )</span></span>
 <span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>s2_collection <span class="ot">=</span> <span class="fu">stac_image_collection</span>(items<span class="sc">$</span>features, <span class="at">srs =</span> <span class="st">&quot;EPSG:32632&quot;</span>, <span class="at">asset_names =</span> <span class="fu">c</span>(<span class="st">&quot;B02_10m&quot;</span>, <span class="st">&quot;B03_10m&quot;</span>, <span class="st">&quot;B04_10m&quot;</span>, <span class="st">&quot;B08_10m&quot;</span>), <span class="at">url_fun =</span> f, <span class="at">property_filter =</span> <span class="cf">function</span>(x) {x[[<span class="st">&quot;proj:code&quot;</span>]] <span class="sc">==</span> <span class="st">&quot;EPSG:32632&quot;</span>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Warning in stac_image_collection(items$features, srs = &quot;EPSG:32632&quot;,
@@ -2347,28 +2362,31 @@ Bands:
 4 B08_10m      0     1                       4</code></pre>
 </div>
 </div>
+<p>As you can see, we have to define the spatial reference system (SRS) manually. Normally, the function automatically reads the SRS from the metadata. However, it currently looks for the property <code>proj:epsg</code>, which is not present in the EOPF Sentinel-2 STAC collection (instead, this includes <code>proj:code</code>). This will be addressed in future releases of <code>gdalcubes</code>. Once the SRS is detected automatically, <code>gdalcubes</code> can also handle different projections of images in the same image collection and reproject them on-the-fly when creating the raster cube. This will significantly simplify the workflow and allow to easly combine images from different UTM zones in one cube.</p>
 </section>
 <section id="create-a-cube-view" class="level3">
 <h3 class="anchored" data-anchor-id="create-a-cube-view">Create a cube view</h3>
-<p>After collecting all available images in an image collection, we will now create a raster cube. For this, we first need to define a cube view, which specifies the spatio-temporal geometry of the raster cube (spatial resolution, extent, temporal resolution, time extent, etc.). For our example, we will select a small subset (10 x 10 km) north of the city of Muenster, which includes the “Rieselfelder” bird sanctuary. We collect the spatio-temporal extent in a list, which we then pass to <code>cube_view()</code>. We also specify a spatial resolution of 10m and a temporal resolution of 1 day. While the Sentinel-2 satellites have a revisit time of ~5 days (plus we limited the number of items received in our STAC request), swath overlaps may in principal lead to higher temporal resolution for certain pixels, so we define 1 day here to get as much data from the image collection as we can. Even for the same day, swath overlaps between Sentinel-2 A and B may lead to certain locations being recorded twice. Thus, we also have to define an aggregation method. Here we use “first”. In the unlikely case that we get data from two images per day at a certain location, we simply choose the first one we get for that day. Days and locations without images are handled by gdalcubes as no-data values.</p>
+<p>After collecting all available images in an image collection, we will now create a raster cube. For this, we first need to define a cube view, which specifies the desired spatio-temporal geometry of the raster cube (spatial resolution, extent, temporal resolution, time extent, etc.). For our example, we will select a small subset (10 x 10 km) north of the city of Muenster, which includes the “Rieselfelder” bird sanctuary. We collect the spatio-temporal extent in a list, which we then pass to <code>cube_view()</code>. We also specify a spatial resolution of 10m and a temporal resolution of 1 day. While the Sentinel-2 satellites have a revisit time of ~5 days (and in addition we have limited the number of items received in our STAC request to 5 in this example), swath overlaps may in principal lead to a higher temporal resolution for certain pixels, so we define 1 day here to get as much data from the image collection as we can. Days and locations without images are handled by gdalcubes as no-data values.</p>
+<p>Even for the same day, swath overlaps between Sentinel-2 A and B may lead to certain locations being recorded twice. Thus, we always have to define an aggregation method. Here we use “first”: in the unlikely case that we have data from two images per day at a certain location, we simply choose the first one we get for that day.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Collect spatio-temporal extent in a list, here an </span></span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>rieselX <span class="ot">=</span> <span class="fl">404500.13</span></span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>rieselY <span class="ot">=</span> <span class="dv">5765279</span></span>
-<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>ext <span class="ot">=</span> <span class="fu">list</span>()</span>
-<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>left <span class="ot">=</span> rieselX <span class="sc">-</span> <span class="dv">5000</span></span>
-<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>right <span class="ot">=</span> rieselX <span class="sc">+</span> <span class="dv">5000</span></span>
-<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>bottom <span class="ot">=</span> rieselY <span class="sc">-</span> <span class="dv">5000</span></span>
-<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>top <span class="ot">=</span> rieselY <span class="sc">+</span> <span class="dv">5000</span></span>
-<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>t0 <span class="ot">=</span> <span class="st">&quot;2025-06-01&quot;</span></span>
-<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>t1 <span class="ot">=</span> <span class="st">&quot;2025-06-30&quot;</span></span>
-<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Create cube view with 10m spatial and 1 day temporal resolution and the previously defined spatio-temporal extent</span></span>
-<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>v <span class="ot">=</span> <span class="fu">cube_view</span>(<span class="at">srs=</span><span class="st">&quot;EPSG:32632&quot;</span>, <span class="at">dx=</span><span class="dv">10</span>, <span class="at">dy=</span><span class="dv">10</span>, <span class="at">dt=</span><span class="st">&quot;P1D&quot;</span>,</span>
-<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>              <span class="at">aggregation=</span><span class="st">&quot;first&quot;</span>,</span>
-<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>              <span class="at">extent=</span>ext)</span>
-<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a>v</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Collect spatio-temporal extent in a list</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="co"># We select a coordinate north of Muenster, and define a 10km x 10km extent around it</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>rieselX <span class="ot">=</span> <span class="fl">404500.13</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>rieselY <span class="ot">=</span> <span class="dv">5765279</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>ext <span class="ot">=</span> <span class="fu">list</span>()</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>left <span class="ot">=</span> rieselX <span class="sc">-</span> <span class="dv">5000</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>right <span class="ot">=</span> rieselX <span class="sc">+</span> <span class="dv">5000</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>bottom <span class="ot">=</span> rieselY <span class="sc">-</span> <span class="dv">5000</span></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>top <span class="ot">=</span> rieselY <span class="sc">+</span> <span class="dv">5000</span></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>t0 <span class="ot">=</span> <span class="st">&quot;2025-06-01&quot;</span></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>t1 <span class="ot">=</span> <span class="st">&quot;2025-06-30&quot;</span></span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Create cube view with 10m spatial and 1 day temporal resolution, and the previously defined spatio-temporal extent</span></span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>v <span class="ot">=</span> <span class="fu">cube_view</span>(<span class="at">srs=</span><span class="st">&quot;EPSG:32632&quot;</span>, <span class="at">dx=</span><span class="dv">10</span>, <span class="at">dy=</span><span class="dv">10</span>, <span class="at">dt=</span><span class="st">&quot;P1D&quot;</span>,</span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>              <span class="at">aggregation=</span><span class="st">&quot;first&quot;</span>,</span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>              <span class="at">extent=</span>ext)</span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a>v</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>A data cube view object
 
@@ -2383,15 +2401,15 @@ Temporal aggregation method: &quot;first&quot;
 Spatial resampling method: &quot;near&quot;</code></pre>
 </div>
 </div>
-<p>As you can see, the cube view summarizes the spatio-temporal geometry of the raster cube we want to create. We can see (amongst other information) that the resultsing cube will have 1000 x 1000 pixels in space (10 km x 10 km at 10m resolution) and 30 time steps (1 per day for June 2025), though many of these pixels and time steps will be no-data values as we do not have complete daily coverage for the whole area.</p>
+<p>As you can see, the cube view summarizes the spatio-temporal geometry of the raster cube we want to create. We can see (amongst other information) that the resulting cube will have 1000 x 1000 pixels in space (10 km x 10 km at 10m resolution) and 30 time steps (1 per day for June 2025), though many of these pixels and time steps will be no-data values as we do not have complete daily coverage for the whole area.</p>
 </section>
 <section id="create-cube-and-plot-an-rgb-and-an-ndvi-image" class="level3">
 <h3 class="anchored" data-anchor-id="create-cube-and-plot-an-rgb-and-an-ndvi-image">Create cube and plot an RGB and an NDVI image</h3>
-<p>Now, we´ll create a raster cube using the previously defined cube view. We´ll then select the red and near-infrared bands, compute and NDVI, and aggregate the results for one month using the median. This means, that for all locations where we received data on more than one day in that month, the median of all values of that pixel throughout the month is taken –&gt; a very basic, but easy and straightforward way to select a value that is robust against outliers (e.g. clouds). As a result, we create an composite image of the specified subset that combines all information gathered there in one month to include as few na-values and clouds as possible.</p>
+<p>Now we´ll create a raster cube using the previously defined cube view. As an exampla application for such a raster cube, we´ll first plot an RGB image of the area. We´ll then select the red and near-infrared bands, and compute an NDVI. In both cases, we use our raster cube to aggregate the results for one month computing the median. This means, that for all locations where we received data on more than one day in that month, the median of all values of that pixel throughout the month is taken –&gt; a very basic, but easy and straightforward way to select a value that is robust against outliers (e.g. clouds). As a result, we create a composite image of the specified subset that combines all information gathered there in one month to include as few na-values and clouds as possible.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">gdalcubes_options</span>(<span class="at">parallel=</span><span class="dv">4</span>)</span>
 <span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="co">#plot the area, aggregated to one image using median for RGB bands</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="co">#create an RGB plot of the area, aggregated to one image for the whole month using median </span></span>
 <span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="fu">raster_cube</span>(s2_collection, v) <span class="sc">|&gt;</span></span>
 <span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select_bands</span>(<span class="fu">c</span>(<span class="st">&quot;B02_10m&quot;</span>,<span class="st">&quot;B03_10m&quot;</span>,<span class="st">&quot;B04_10m&quot;</span>)) <span class="sc">|&gt;</span></span>
 <span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">reduce_time</span>(<span class="fu">c</span>(<span class="st">&quot;median(B02_10m)&quot;</span>, <span class="st">&quot;median(B03_10m)&quot;</span>, <span class="st">&quot;median(B04_10m)&quot;</span>)) <span class="sc">|&gt;</span> </span>
@@ -2403,7 +2421,7 @@ Spatial resampling method: &quot;near&quot;</code></pre>
 </figure>
 </div>
 </div>
-<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># compute NDVI and aggregate to one image using median</span></span>
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co">#compute NDVI and aggregate to one image using median</span></span>
 <span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>ndvi <span class="ot">&lt;-</span> <span class="fu">raster_cube</span>(s2_collection, v) <span class="sc">|&gt;</span></span>
 <span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>              <span class="fu">select_bands</span>(<span class="fu">c</span>(<span class="st">&quot;B04_10m&quot;</span>,<span class="st">&quot;B08_10m&quot;</span>)) <span class="sc">|&gt;</span></span>
 <span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>              <span class="fu">apply_pixel</span>(<span class="st">&quot;(B08_10m - B04_10m)/(B08_10m + B04_10m)&quot;</span>, <span class="st">&quot;NDVI&quot;</span>) <span class="sc">|&gt;</span></span>
@@ -2429,11 +2447,11 @@ Task
 </div>
 <div class="callout-body-container callout-body">
 <p>Perform a simple change detection between April and June 2025.</p>
-<p><code>gdalcubes</code> can also be used to compute more complex analyses, such as change analyis between two time periods. However, for a task like this it is more straightforward to use it only for preparing the inputs (cloud-free composite NDVI images for each year) and then use another package like <code>terra</code> to compute the difference image. We´ll the same approach to create an NDVI image for the same area in April. Export both NDVI images (April and June) and use a package like <code>terra</code> to compute a simple difference image to observe changes between the two months.</p>
+<p><code>gdalcubes</code> can also be used to compute more complex analyses, such as change analyis between two time periods. However, for a task like this it is more straightforward to use it only for preparing the inputs (cloud-free composite NDVI images for each month) and then use another package like <code>terra</code> to compute the difference image. We´ll apply the same approach as above to create an NDVI image for the same area in April. We´ll export both NDVI images (April and June) and use the package <code>terra</code> to compute a simple difference image highlighting changes between the two months.</p>
 </div>
 </div>
 <div class="callout callout-style-default callout-tip callout-titled">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-4-contents" aria-controls="callout-4" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-5-contents" aria-controls="callout-5" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
@@ -2442,7 +2460,7 @@ Solution: click to expand
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-4" class="callout-4-contents callout-collapse collapse">
+<div id="callout-5" class="callout-5-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <div class="cell">
 <div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(terra)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>

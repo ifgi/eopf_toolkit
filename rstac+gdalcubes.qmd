@@ -104,7 +104,8 @@ s2_collection = stac_image_collection(items$features, srs = "EPSG:32632", asset_
 s2_collection
 ```
 
-As you can see, we have to define the spatial reference system (SRS) manually. Normally, the function automatically reads the SRS from the metadata. However, it currently looks for the property `proj:epsg`, which is not present in the EOPF Sentinel-2 STAC collection (instead, this includes `proj:code`). This will be addressed in future releases of `gdalcubes`. Once the SRS is detected automatically, `gdalcubes` can also handle different projections of images in the same image collection and reproject them on-the-fly when creating the raster cube. This will significantly simplify the workflow and allow to easily combine images from different UTM zones in one cube.
+Currently, `gdalcubes` cannot read the SRS from the returned STAC items (due to the use of `proj:code` instead of `proj:epsg` metadata fields) and we have to define the spatial reference system (SRS) manually. However, this has been addressed in the latest `gdalcubes` version on GitHub, which is not yet available on CRAN. Once the SRS is detected automatically, `gdalcubes` can also handle different projections of images in the same image collection and reproject them on-the-fly when creating the raster cube. This will significantly simplify the workflow and allow to easily combine images from different UTM zones in one cube.
+
 
 
 

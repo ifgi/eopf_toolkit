@@ -68,14 +68,14 @@ print(zarr_content)
 ```
 :::
 
-Now that we have explored the content, let's get some related metadata. `Rarr` provides the `read_zattrs` function for this purpose, which looks for the `.zattrs` file inside the Zarr store. 
+Now that we have explored the content, let's get some related metadata. `Rarr` provides the `read_zarr_attributes` function for this purpose, which looks for the `.zattrs` file inside the Zarr store. 
 
 ⛔ Unfortunately we were not successful when applying it to our remote store.
 ```{r}
 #| error: true
 
-read_zattrs(zarr_url)
-read_zattrs(file.path(zarr_url, ".zattrs"))
+read_zarr_attributes(zarr_url)
+read_zarr_attributes(file.path(zarr_url, ".zattrs"))
 ```
 
 ✅ As a simple workaround we can read the JSON directly:
@@ -162,7 +162,7 @@ plot(zz, axes = TRUE)
 The map shows Sentinel-2 band 1 (coastal aerosol band) reflectance at 60m spatial resolution for north-western Italy with the Alps in the West and the city of Torino in the North-East.
 
 
-We can enclose these steps in a single function with some flexibility for variable names and resolutions. This allows us to retireve any band at any available resolution from the remote Zarr store.
+We can enclose these steps in a single function with some flexibility for variable names and resolutions. This allows us to retrieve any band at any available resolution from the remote Zarr store.
 
 ```{r}
 st_read_zarray = function(path, var, res, ...){
@@ -190,7 +190,7 @@ st_read_zarray = function(path, var, res, ...){
   zarray_y = file.path(path, "measurements/reflectance", res_char, "y") |> 
     read_zarr_array(...)
   
-  # transpose matrixe before converting to stars
+  # transpose matrix before converting to stars
   z = zarray |> 
     t() |> 
     st_as_stars() |> 
@@ -235,7 +235,7 @@ mapview(multi_band)
 
 ## Benchmark
 
-Using `Rarr` to read remote Zarr stores is just one of several options. R packages `stars` and `terra` provide functionality, that uses GDAl's Zarr driver in the background. To see if there is a benefit to each of the methods, we can compare their execution time and memory allocation with a little benchmark.
+Using `Rarr` to read remote Zarr stores is just one of several options. R packages `stars` and `terra` provide functionality, that uses GDAL's Zarr driver in the background. To see if there is a benefit to each of the methods, we can compare their execution time and memory allocation with a little benchmark.
 
 ```{r}
 # GDAL-compatible VSI URL
@@ -271,7 +271,7 @@ In this notebook we have demonstrated how to access remote Zarr stores in R usin
 
 ## What's next?
 
-Further tests should evaluate wether data retrieved via `Rarr` versus GDAL are identical in terms of spatial extent and offset.
+Further tests should evaluate whether data retrieved via `Rarr` versus GDAL are identical in terms of spatial extent and offset.
 
 Explore [this related notebook](./remote_Zarr_via_GDAL.html) which demonstrates how to access the same Zarr data using the GDAL Zarr driver via the `stars` and `terra` packages.
 

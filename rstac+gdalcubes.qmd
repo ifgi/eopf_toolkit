@@ -16,13 +16,13 @@ For details on the functionality and concepts, see the [gdalcubes documentation]
 
 ### What we will learn
 
-- 🚀 Retrieve STAC items for Sentinel-2 imagery in a specified AOI (roughly "Münsterland" region, Germany) and time range (June 2025) using `rstac`
+- 🛰️ Retrieve STAC items for Sentinel-2 imagery in a specified AOI (roughly "Münsterland" region, Germany) and time range (June 2025) using `rstac`
 - 🔎 Create an image collection from STAC items using `stac_image_collection()` in `gdalcubes`
-- 🛰️ Create raster data cubes with a user-defined spatiotemporal geometry using `cube_view()` and `raster_cube()` in `gdalcubes` and perform a basic NDVI change analysis
+- 🚀 Create a raster data cube with a user-defined spatiotemporal geometry using `cube_view()` and `raster_cube()` in `gdalcubes` and compute the NDVI 
 
 
 ::: {.callout-note}
-As you will see, we will need some tweaking of the workflow here and there, since `gdalcubes` is currently not yet fully prepared for working with the EOPF Sentinel Zarr Samples Service, but the functionality is there and will hopefully be streamlined in future releases.
+As you’ll notice, we’ll need to make some adjustments to the workflow in certain places since gdalcubes isn’t fully optimized yet for the EOPF Sentinel Zarr Samples Service. However, the required functionality is available, and we can expect it to be more seamless in future releases.
 :::
 
 ::: {.callout-note}
@@ -31,13 +31,12 @@ This now also works on Windows when using R >= 4.5.2, where an issue with readin
 
 ### Prerequisites
 
-Make sure to have R >=4.5.2. Install `rstac`, `sf`, `terra`, and `gdalcubes`. We will also use  `viridis` for nice color maps, so we will install it .
+Make sure to have R >=4.5.2. Install `rstac`, `sf` and `gdalcubes`. We will also use  `viridis` for nice color maps, so we will install it as well.
 
 ```{r}
 #install.packages("rstac")
 #install.packages("sf")
 #install.packages("gdalcubes")
-#install.packages("terra")
 #install.packages("viridis")
 ```
 
@@ -54,7 +53,7 @@ This notebook is only meant to showcase a simple example of the usage of `gdalcu
 
 We start with a search for image data in the EOPF Zarr Samples Service. To interact with the EOPF STAC API, we will use `rstac`:
 ```{r}	
-# Using a bbox roughly for "Münsterland" and the month June 2025.
+# Using a bbox roughly for "Münsterland" region in Germany and the month June 2025.
 # For the stac request, we need the bbox in WGS84
 # We limit the no of results to 5 for testing purposes
 library(rstac)
@@ -82,7 +81,8 @@ f = function(href) {
 }
 ```
 
-As you can see, we have received 5 STAC items matching our search criteria (we would have received more items, but we have set the limit to 5).
+As you can see, we have received 5 STAC items matching our search criteria (we would have received more items, but we have set the limit to 5). 
+We have then defined a helper function that adapts the asset URLs.
 
 *Why adapt the URLs?*
 
@@ -90,8 +90,8 @@ The items returned from our STAC request have asset hrefs like this:
 ```{r}
 items$features[[1]]$assets$B02_10m$href 
 ```
-In order for GDAL to use the correct driver, we need the URL with a prefix for the correct Zarr driver, see tutorial: https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/
-Also, we want it to point directly to the .zarr file. The function above replaces the href by one that links directly there and prepends the required prefix.
+In order for GDAL to use the correct driver, we need the URL with a prefix for the correct Zarr driver, see this [tutorial](https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/)
+Additionally, we want it to point directly to the .zarr file. The function above replaces the href by one that links directly there and prepends the required prefix.
 Since you can give this function as an argument to `stac_image_collection()`, it will be applied to all assets automatically.
 
 
@@ -170,17 +170,19 @@ plot(ndvi, zlim = c(-0.2,1),key.pos=1, col=viridis::viridis)
 
 ```
 
-::: callout-caution
-## Task
-Perform a simple change detection between April and June 2025.
 
-`gdalcubes` can also be used to compute more complex analyses, such as change analysis between two time periods. However, for a task like this it is more straightforward to create two separate cubes for both montht, derives cloud-free composite NDVI images, and then use another package like `terra` to compute the difference image.
-We´ll apply the same approach as above to create an NDVI image for the same area in April. We´ll export both NDVI images (April and June) and use the package `terra` to compute a simple difference image highlighting changes between the two months.
-:::
 
-::: {.callout-tip collapse="true"}
-## Solution: click to expand
-```{r}	
+## 💪 Now it is your turn
+
+- 🔍 **Task**: Perform a simple NDVI change analysis between April and June 2025.
+
+- ℹ️ `gdalcubes` can also be used to compute more complex analyses, such as change analysis between two time periods. For a task like this however, it is probably more straightforward to create two separate cubes for both months, derive cloud-free composite NDVI images from them, and then use another package like `terra` to compute the difference image.
+You can apply the same approach as above to create a composite NDVI image for the same area in April. Export both NDVI images (April and June) using `write_tif()` and use the function `rast()` of the package `terra` to load the output. You can then simply subtract both objects to compute a simple difference image highlighting changes between the two months.
+
+
+```{r, echo=FALSE, eval=FALSE}
+#SOLUTION using terra for the change analysis
+#install.packages("terra") #install if necessary
 library(terra)
 
 items2 = stac_source |>
@@ -211,14 +213,7 @@ ndvi_june <- rast(write_tif(ndvi))
 ndvi_change <- ndvi_june - ndvi_april
 plot(ndvi_change, main = "NDVI Change April 2025 - June 2025")
 
-
-
-
-#system.time(raster_cube(s2_collection4, v4) |>
-#  select_bands(c("B04_10m","B08_10m")) |>
-#  reduce_time(c("median(B04_10m)","median(B08_10m)")) |>
-#  apply_pixel("(B08_10m_median - B04_10m_median)/(B08_10m_median + B04_10m_median)", "NDVI") |>
-#  plot(zlim = c(-0.2,1),key.pos=1, col=viridis::viridis))
 ```
 
-:::
+## Conclusion
+In this notebook, we have demonstrated how to create a raster data cube from STAC items of the EOPF Sentinel Zarr Samples Service using the `rstac` and `gdalcubes` packages in R. We retrieved Sentinel-2 images for a specified area and time range, created an image collection from these items, and then constructed a raster cube with a defined spatio-temporal geometry. We visualized an RGB composite and computed the NDVI for the area of interest. We have seen that currently some manual adjustments are necessary to work with the EOPF Sentinel Zarr Samples Service using `gdalcubes`, but this will be streamlined in future releases of the package.

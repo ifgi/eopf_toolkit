@@ -33,7 +33,7 @@ zarr_url = "https://objects.eodc.eu/e05ab01a9d56408d82ac32d69a5aae2a:sample-data
 #| message: false
 #| warning: false
 
-library(Rarr)      # reading
+library(Rarr)      # reading; BiocManager::install("Rarr")
 library(stars)     # spatial objects
 library(dplyr)     # table operations
 library(jsonlite)  # parsing metadata

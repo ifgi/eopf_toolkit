@@ -126,37 +126,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(fs)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="fixes-to-the-rarr-package" class="level3">
-<h3 class="anchored" data-anchor-id="fixes-to-the-rarr-package">Fixes to the Rarr package</h3>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>.url_parse_other <span class="ot">&lt;-</span> <span class="cf">function</span>(url) {</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  parsed_url <span class="ot">&lt;-</span> httr<span class="sc">::</span><span class="fu">parse_url</span>(url)</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  bucket <span class="ot">&lt;-</span> <span class="fu">gsub</span>(</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> parsed_url<span class="sc">$</span>path, <span class="at">pattern =</span> <span class="st">"^/?([[a-z0-9</span><span class="sc">\\</span><span class="st">:</span><span class="sc">\\</span><span class="st">.-]*)/.*"</span>,</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">replacement =</span> <span class="st">"</span><span class="sc">\\</span><span class="st">1"</span>, <span class="at">ignore.case =</span> <span class="cn">TRUE</span></span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  object <span class="ot">&lt;-</span> <span class="fu">gsub</span>(</span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> parsed_url<span class="sc">$</span>path, <span class="at">pattern =</span> <span class="st">"^/?([a-z0-9</span><span class="sc">\\</span><span class="st">:</span><span class="sc">\\</span><span class="st">.-]*)/(.*)"</span>,</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">replacement =</span> <span class="st">"</span><span class="sc">\\</span><span class="st">2"</span>, <span class="at">ignore.case =</span> <span class="cn">TRUE</span></span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  hostname <span class="ot">&lt;-</span> <span class="fu">paste0</span>(parsed_url<span class="sc">$</span>scheme, <span class="st">"://"</span>, parsed_url<span class="sc">$</span>hostname)</span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.null</span>(parsed_url<span class="sc">$</span>port)) {</span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    hostname <span class="ot">&lt;-</span> <span class="fu">paste0</span>(hostname, <span class="st">":"</span>, parsed_url<span class="sc">$</span>port)</span>
-<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>  res <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
-<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">bucket =</span> bucket,</span>
-<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">object =</span> object,</span>
-<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">region =</span> <span class="st">"auto"</span>,</span>
-<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">hostname =</span> hostname</span>
-<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(res)</span>
-<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a><span class="fu">assignInNamespace</span>(<span class="st">".url_parse_other"</span>, .url_parse_other, <span class="at">ns =</span> <span class="st">"Rarr"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-</section>
 <section id="access-sentinel-2-l2a-imagery-for-pre-and-post-fire-event-using-rstac" class="level3">
 <h3 class="anchored" data-anchor-id="access-sentinel-2-l2a-imagery-for-pre-and-post-fire-event-using-rstac">Access Sentinel-2 L2A imagery for Pre and Post-fire event using Rstac</h3>
 <div class="cell">

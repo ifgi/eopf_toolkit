@@ -2295,7 +2295,7 @@ Note
   - S2C_MSIL2A_20250630T104041_N0511_R008_T32ULC_20250630T161206
   - S2C_MSIL2A_20250630T104041_N0511_R008_T31UGU_20250630T161206
 - assets: 
-AOT_10m, B01_20m, B02_10m, B03_10m, B04_10m, B05_20m, B06_20m, B07_20m, B08_10m, B09_60m, B11_20m, B12_20m, B8A_20m, product, product_metadata, SCL_20m, SR_10m, SR_20m, SR_60m, TCI_10m, WVP_10m
+AOT_10m, B01_20m, B02_10m, B03_10m, B04_10m, B05_20m, B06_20m, B07_20m, B08_10m, B09_60m, B11_20m, B12_20m, B8A_20m, product, product_metadata, SCL_20m, SR_10m, SR_20m, SR_60m, TCI_10m, WVP_10m, zipped_product
 - item&#39;s fields: 
 assets, bbox, collection, geometry, id, links, properties, stac_extensions, stac_version, type</code></pre>
 </div>
@@ -2362,7 +2362,7 @@ Bands:
 4 B08_10m      0     1                       4</code></pre>
 </div>
 </div>
-<p>As you can see, we have to define the spatial reference system (SRS) manually. Normally, the function automatically reads the SRS from the metadata. However, it currently looks for the property <code>proj:epsg</code>, which is not present in the EOPF Sentinel-2 STAC collection (instead, this includes <code>proj:code</code>). This will be addressed in future releases of <code>gdalcubes</code>. Once the SRS is detected automatically, <code>gdalcubes</code> can also handle different projections of images in the same image collection and reproject them on-the-fly when creating the raster cube. This will significantly simplify the workflow and allow to easily combine images from different UTM zones in one cube.</p>
+<p>Currently, <code>gdalcubes</code> cannot read the SRS from the returned STAC items (due to the use of <code>proj:code</code> instead of <code>proj:epsg</code> metadata fields) and we have to define the spatial reference system (SRS) manually. However, this has been addressed in the latest <code>gdalcubes</code> version on GitHub, which is not yet available on CRAN. Once the SRS is detected automatically, <code>gdalcubes</code> can also handle different projections of images in the same image collection and reproject them on-the-fly when creating the raster cube. This will significantly simplify the workflow and allow to easily combine images from different UTM zones in one cube.</p>
 </section>
 <section id="create-a-cube-view" class="level3">
 <h3 class="anchored" data-anchor-id="create-a-cube-view">Create a cube view</h3>

@@ -84,13 +84,13 @@ f = function(href) {
 As you can see, we have received 5 STAC items matching our search criteria (we would have received more items, but we have set the limit to 5). 
 We have then defined a helper function that adapts the asset URLs.
 
-*Why adapt the URLs?*
+❓ *Why adapt the URLs?*
 
 The items returned from our STAC request have asset hrefs like this:
 ```{r}
 items$features[[1]]$assets$B02_10m$href 
 ```
-In order for GDAL to use the correct driver, we need the URL with a prefix for the correct Zarr driver, see this [tutorial](https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/)
+In order for GDAL to use the correct driver, we need the URL with a prefix for the correct Zarr driver (see this [tutorial](https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/))
 Additionally, we want it to point directly to the .zarr file. The function above replaces the href by one that links directly there and prepends the required prefix.
 Since you can give this function as an argument to `stac_image_collection()`, it will be applied to all assets automatically.
 
@@ -99,12 +99,12 @@ Now we can create an image collection from the received STAC items:
 ```{r}
 # Manually set argument "srs", because gdalcubes looks for proj:epsg, but in the collection there is only proj:code
 # Also: since the items found are not all in the same UTM zone, we will filter them them first to have all images in one SRS )
-s2_collection = stac_image_collection(items$features, srs = "EPSG:32632", asset_names = c("B02_10m", "B03_10m", "B04_10m", "B08_10m"), url_fun = f, property_filter = function(x) {x[["proj:code"]] == "EPSG:32632"})
+s2_collection = stac_image_collection(items$features, asset_names = c("B02_10m", "B03_10m", "B04_10m", "B08_10m"), url_fun = f)
 
 s2_collection
 ```
 
-Currently, `gdalcubes` cannot read the SRS from the returned STAC items (due to the use of `proj:code` instead of `proj:epsg` metadata fields) and we have to define the spatial reference system (SRS) manually. However, this has been addressed in the latest `gdalcubes` version on GitHub, which is not yet available on CRAN. Once the SRS is detected automatically, `gdalcubes` can also handle different projections of images in the same image collection and reproject them on-the-fly when creating the raster cube. This will significantly simplify the workflow and allow to easily combine images from different UTM zones in one cube.
+Note that the images originate from two different UTM zones (`EPSG:32632` and `EPSG:32631`). They will be automatically detected and images -if necessary- reprojected during the creation of the raster data cube. This simplifies the workflow significantly and allows to easily combine images from different UTM zones in one cube.
 
 
 ### Create a cube view

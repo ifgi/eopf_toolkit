@@ -2295,7 +2295,7 @@ Note
   - S2C_MSIL2A_20250630T104041_N0511_R008_T32ULC_20250630T161206
   - S2C_MSIL2A_20250630T104041_N0511_R008_T31UGU_20250630T161206
 - assets: 
-AOT_10m, B01_20m, B02_10m, B03_10m, B04_10m, B05_20m, B06_20m, B07_20m, B08_10m, B09_60m, B11_20m, B12_20m, B8A_20m, product, product_metadata, SCL_20m, SR_10m, SR_20m, SR_60m, TCI_10m, WVP_10m, zipped_product
+AOT_10m, B01_20m, B02_10m, B03_10m, B04_10m, B05_20m, B06_20m, B07_20m, B08_10m, B09_60m, B11_20m, B12_20m, B8A_20m, product, product_metadata, SCL_20m, SR_10m, SR_20m, SR_60m, TCI_10m, WVP_10m
 - item&#39;s fields: 
 assets, bbox, collection, geometry, id, links, properties, stac_extensions, stac_version, type</code></pre>
 </div>
@@ -2305,7 +2305,7 @@ assets, bbox, collection, geometry, id, links, properties, stac_extensions, stac
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>As you can see, we have received 5 STAC items matching our search criteria (we would have received more items, but we have set the limit to 5). We have then defined a helper function that adapts the asset URLs.</p>
-<p><em>Why adapt the URLs?</em></p>
+<p>❓ <em>Why adapt the URLs?</em></p>
 <p>The items returned from our STAC request have asset hrefs like this:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>items<span class="sc">$</span>features[[<span class="dv">1</span>]]<span class="sc">$</span>assets<span class="sc">$</span>B02_10m<span class="sc">$</span>href </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -2313,80 +2313,63 @@ assets, bbox, collection, geometry, id, links, properties, stac_extensions, stac
 <pre><code>[1] &quot;https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/30/products/cpm_v256/S2C_MSIL2A_20250630T104041_N0511_R008_T32UMD_20250630T161206.zarr/measurements/reflectance/r10m/b02&quot;</code></pre>
 </div>
 </div>
-<p>In order for GDAL to use the correct driver, we need the URL with a prefix for the correct Zarr driver, see this <a href="https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/">tutorial</a> Additionally, we want it to point directly to the .zarr file. The function above replaces the href by one that links directly there and prepends the required prefix. Since you can give this function as an argument to <code>stac_image_collection()</code>, it will be applied to all assets automatically.</p>
+<p>In order for GDAL to use the correct driver, we need the URL with a prefix for the correct Zarr driver (see this <a href="https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/">tutorial</a>) Additionally, we want it to point directly to the .zarr file. The function above replaces the href by one that links directly there and prepends the required prefix. Since you can give this function as an argument to <code>stac_image_collection()</code>, it will be applied to all assets automatically.</p>
 <p>Now we can create an image collection from the received STAC items:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Manually set argument &quot;srs&quot;, because gdalcubes looks for proj:epsg, but in the collection there is only proj:code</span></span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Also: since the items found are not all in the same UTM zone, we will filter them them first to have all images in one SRS )</span></span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>s2_collection <span class="ot">=</span> <span class="fu">stac_image_collection</span>(items<span class="sc">$</span>features, <span class="at">srs =</span> <span class="st">&quot;EPSG:32632&quot;</span>, <span class="at">asset_names =</span> <span class="fu">c</span>(<span class="st">&quot;B02_10m&quot;</span>, <span class="st">&quot;B03_10m&quot;</span>, <span class="st">&quot;B04_10m&quot;</span>, <span class="st">&quot;B08_10m&quot;</span>), <span class="at">url_fun =</span> f, <span class="at">property_filter =</span> <span class="cf">function</span>(x) {x[[<span class="st">&quot;proj:code&quot;</span>]] <span class="sc">==</span> <span class="st">&quot;EPSG:32632&quot;</span>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Warning in stac_image_collection(items$features, srs = &quot;EPSG:32632&quot;,
-asset_names = c(&quot;B02_10m&quot;, : STAC asset with name &#39;B02_10m&#39; does not include
-eo:bands metadata and will be considered as a single band source</code></pre>
-</div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Warning in stac_image_collection(items$features, srs = &quot;EPSG:32632&quot;,
-asset_names = c(&quot;B02_10m&quot;, : STAC asset with name &#39;B03_10m&#39; does not include
-eo:bands metadata and will be considered as a single band source</code></pre>
-</div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Warning in stac_image_collection(items$features, srs = &quot;EPSG:32632&quot;,
-asset_names = c(&quot;B02_10m&quot;, : STAC asset with name &#39;B04_10m&#39; does not include
-eo:bands metadata and will be considered as a single band source</code></pre>
-</div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Warning in stac_image_collection(items$features, srs = &quot;EPSG:32632&quot;,
-asset_names = c(&quot;B02_10m&quot;, : STAC asset with name &#39;B08_10m&#39; does not include
-eo:bands metadata and will be considered as a single band source</code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>s2_collection</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>s2_collection <span class="ot">=</span> <span class="fu">stac_image_collection</span>(items<span class="sc">$</span>features, <span class="at">asset_names =</span> <span class="fu">c</span>(<span class="st">&quot;B02_10m&quot;</span>, <span class="st">&quot;B03_10m&quot;</span>, <span class="st">&quot;B04_10m&quot;</span>, <span class="st">&quot;B08_10m&quot;</span>), <span class="at">url_fun =</span> f)</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>s2_collection</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Image collection object, referencing 4 images with 4 bands
+<pre><code>Image collection object, referencing 5 images with 4 bands
 Images:
                                                           name     left
 1 S2C_MSIL2A_20250630T104041_N0511_R008_T32UMD_20250630T161206 7.500940
 2 S2C_MSIL2A_20250630T104041_N0511_R008_T32UMC_20250630T161206 7.531529
 3 S2C_MSIL2A_20250630T104041_N0511_R008_T32ULD_20250630T161206 6.004761
 4 S2C_MSIL2A_20250630T104041_N0511_R008_T32ULC_20250630T161206 6.065798
+5 S2C_MSIL2A_20250630T104041_N0511_R008_T31UGU_20250630T161206 5.927820
        top   bottom    right            datetime        srs
 1 53.24954 52.25345 9.146277 2025-06-30T10:40:41 EPSG:32632
 2 52.35039 51.35443 9.143291 2025-06-30T10:40:41 EPSG:32632
 3 53.24196 52.22621 7.678544 2025-06-30T10:40:41 EPSG:32632
 4 52.34305 51.32805 7.704578 2025-06-30T10:40:41 EPSG:32632
+5 53.21199 52.17549 7.634183 2025-06-30T10:40:41 EPSG:32631
 
 Bands:
      name offset scale unit nodata image_count
-1 B02_10m      0     1                       4
-2 B03_10m      0     1                       4
-3 B04_10m      0     1                       4
-4 B08_10m      0     1                       4</code></pre>
+1 B02_10m      0     1                       5
+2 B03_10m      0     1                       5
+3 B04_10m      0     1                       5
+4 B08_10m      0     1                       5</code></pre>
 </div>
 </div>
-<p>Currently, <code>gdalcubes</code> cannot read the SRS from the returned STAC items (due to the use of <code>proj:code</code> instead of <code>proj:epsg</code> metadata fields) and we have to define the spatial reference system (SRS) manually. However, this has been addressed in the latest <code>gdalcubes</code> version on GitHub, which is not yet available on CRAN. Once the SRS is detected automatically, <code>gdalcubes</code> can also handle different projections of images in the same image collection and reproject them on-the-fly when creating the raster cube. This will significantly simplify the workflow and allow to easily combine images from different UTM zones in one cube.</p>
+<p>Note that the images originate from two different UTM zones (<code>EPSG:32632</code> and <code>EPSG:32631</code>). They will be automatically detected and images -if necessary- reprojected during the creation of the raster data cube. This simplifies the workflow significantly and allows to easily combine images from different UTM zones in one cube.</p>
 </section>
 <section id="create-a-cube-view" class="level3">
 <h3 class="anchored" data-anchor-id="create-a-cube-view">Create a cube view</h3>
 <p>After collecting all available images in an image collection, we will now create a raster data cube. For this, we first need to define a cube view, which specifies the desired spatio-temporal geometry of the raster cube (spatial resolution, extent, temporal resolution, time extent, etc.). For our example, we will select a small subset (10 x 10 km) north of the city of Muenster, which includes the “Rieselfelder” bird sanctuary. We collect the spatio-temporal extent in a list, which we then pass to <code>cube_view()</code>. We also specify a spatial resolution of 10m and a temporal resolution of 1 day. While the Sentinel-2 satellites have a revisit time of ~5 days (and in addition we have limited the number of items received in our STAC request to 5 in this example), swath overlaps may in principal lead to a higher temporal resolution for certain pixels, so we define 1 day here to get as much data from the image collection as we can, leading to a rather sparse cube. However, days and locations without images are interpreted as no-data values and will simply be ignored in the following steps (see <a href="https://gdalcubes.github.io/source/concepts/execution.html#chunking">https://gdalcubes.github.io/source/concepts/execution.html#chunking</a> for details).</p>
 <p>Even for the same day, swath overlaps between Sentinel-2 A and B may lead to certain locations being recorded twice. Thus, we always have to define an aggregation method. Here we use “first”: in the unlikely case that we have data from two images per day at a certain location, we simply choose the first.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Collect spatio-temporal extent in a list</span></span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="co"># We select a coordinate north of Muenster, and define a 10km x 10km extent around it</span></span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>rieselX <span class="ot">=</span> <span class="fl">404500.13</span></span>
-<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>rieselY <span class="ot">=</span> <span class="dv">5765279</span></span>
-<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>ext <span class="ot">=</span> <span class="fu">list</span>()</span>
-<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>left <span class="ot">=</span> rieselX <span class="sc">-</span> <span class="dv">5000</span></span>
-<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>right <span class="ot">=</span> rieselX <span class="sc">+</span> <span class="dv">5000</span></span>
-<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>bottom <span class="ot">=</span> rieselY <span class="sc">-</span> <span class="dv">5000</span></span>
-<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>top <span class="ot">=</span> rieselY <span class="sc">+</span> <span class="dv">5000</span></span>
-<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>t0 <span class="ot">=</span> <span class="st">&quot;2025-06-01&quot;</span></span>
-<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>t1 <span class="ot">=</span> <span class="st">&quot;2025-06-30&quot;</span></span>
-<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Create cube view with 10m spatial and 1 day temporal resolution, and the previously defined spatio-temporal extent</span></span>
-<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>v <span class="ot">=</span> <span class="fu">cube_view</span>(<span class="at">srs=</span><span class="st">&quot;EPSG:32632&quot;</span>, <span class="at">dx=</span><span class="dv">10</span>, <span class="at">dy=</span><span class="dv">10</span>, <span class="at">dt=</span><span class="st">&quot;P1D&quot;</span>,</span>
-<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>              <span class="at">aggregation=</span><span class="st">&quot;first&quot;</span>,</span>
-<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>              <span class="at">extent=</span>ext)</span>
-<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a>v</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Collect spatio-temporal extent in a list</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="co"># We select a coordinate north of Muenster, and define a 10km x 10km extent around it</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>rieselX <span class="ot">=</span> <span class="fl">404500.13</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>rieselY <span class="ot">=</span> <span class="dv">5765279</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>ext <span class="ot">=</span> <span class="fu">list</span>()</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>left <span class="ot">=</span> rieselX <span class="sc">-</span> <span class="dv">5000</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>right <span class="ot">=</span> rieselX <span class="sc">+</span> <span class="dv">5000</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>bottom <span class="ot">=</span> rieselY <span class="sc">-</span> <span class="dv">5000</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>top <span class="ot">=</span> rieselY <span class="sc">+</span> <span class="dv">5000</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>t0 <span class="ot">=</span> <span class="st">&quot;2025-06-01&quot;</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>t1 <span class="ot">=</span> <span class="st">&quot;2025-06-30&quot;</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Create cube view with 10m spatial and 1 day temporal resolution, and the previously defined spatio-temporal extent</span></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>v <span class="ot">=</span> <span class="fu">cube_view</span>(<span class="at">srs=</span><span class="st">&quot;EPSG:32632&quot;</span>, <span class="at">dx=</span><span class="dv">10</span>, <span class="at">dy=</span><span class="dv">10</span>, <span class="at">dt=</span><span class="st">&quot;P1D&quot;</span>,</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>              <span class="at">aggregation=</span><span class="st">&quot;first&quot;</span>,</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>              <span class="at">extent=</span>ext)</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>v</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>A data cube view object
 
@@ -2407,13 +2390,13 @@ Spatial resampling method: &quot;near&quot;</code></pre>
 <h3 class="anchored" data-anchor-id="create-cube-and-plot-an-rgb-and-an-ndvi-image">Create cube and plot an RGB and an NDVI image</h3>
 <p>Now we´ll create a raster cube using the previously defined cube view. As an example application for such a raster cube, we´ll first plot an RGB image of the area. We´ll then select the red and near-infrared bands, and compute an NDVI. In both cases, we use our raster cube to aggregate the results for one month computing the median. This means, that for all locations where we received data on more than one day in that month, the median of all values of that pixel throughout the month is taken –&gt; a very basic, but easy and straightforward way to select a value that is robust against outliers (e.g. clouds).</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">gdalcubes_options</span>(<span class="at">parallel=</span><span class="dv">4</span>)</span>
-<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="co">#create an RGB plot of the area, aggregated to one image for the whole month using median </span></span>
-<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="fu">raster_cube</span>(s2_collection, v) <span class="sc">|&gt;</span></span>
-<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select_bands</span>(<span class="fu">c</span>(<span class="st">&quot;B02_10m&quot;</span>,<span class="st">&quot;B03_10m&quot;</span>,<span class="st">&quot;B04_10m&quot;</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">reduce_time</span>(<span class="fu">c</span>(<span class="st">&quot;median(B02_10m)&quot;</span>, <span class="st">&quot;median(B03_10m)&quot;</span>, <span class="st">&quot;median(B04_10m)&quot;</span>)) <span class="sc">|&gt;</span> </span>
-<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot</span>(<span class="at">rgb =</span> <span class="dv">3</span><span class="sc">:</span><span class="dv">1</span>, <span class="at">zlim =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">3000</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">gdalcubes_options</span>(<span class="at">parallel=</span><span class="dv">4</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="co">#create an RGB plot of the area, aggregated to one image for the whole month using median </span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="fu">raster_cube</span>(s2_collection, v) <span class="sc">|&gt;</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select_bands</span>(<span class="fu">c</span>(<span class="st">&quot;B02_10m&quot;</span>,<span class="st">&quot;B03_10m&quot;</span>,<span class="st">&quot;B04_10m&quot;</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">reduce_time</span>(<span class="fu">c</span>(<span class="st">&quot;median(B02_10m)&quot;</span>, <span class="st">&quot;median(B03_10m)&quot;</span>, <span class="st">&quot;median(B04_10m)&quot;</span>)) <span class="sc">|&gt;</span> </span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot</span>(<span class="at">rgb =</span> <span class="dv">3</span><span class="sc">:</span><span class="dv">1</span>, <span class="at">zlim =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">3000</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -2421,13 +2404,13 @@ Spatial resampling method: &quot;near&quot;</code></pre>
 </figure>
 </div>
 </div>
-<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co">#compute NDVI and aggregate to one image using median</span></span>
-<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>ndvi <span class="ot">&lt;-</span> <span class="fu">raster_cube</span>(s2_collection, v) <span class="sc">|&gt;</span></span>
-<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>              <span class="fu">select_bands</span>(<span class="fu">c</span>(<span class="st">&quot;B04_10m&quot;</span>,<span class="st">&quot;B08_10m&quot;</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>              <span class="fu">apply_pixel</span>(<span class="st">&quot;(B08_10m - B04_10m)/(B08_10m + B04_10m)&quot;</span>, <span class="st">&quot;NDVI&quot;</span>) <span class="sc">|&gt;</span></span>
-<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>              <span class="fu">reduce_time</span>(<span class="fu">c</span>(<span class="st">&quot;median(NDVI)&quot;</span>)) </span>
-<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>            </span>
-<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(ndvi, <span class="at">zlim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="fl">0.2</span>,<span class="dv">1</span>),<span class="at">key.pos=</span><span class="dv">1</span>, <span class="at">col=</span>viridis<span class="sc">::</span>viridis)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co">#compute NDVI and aggregate to one image using median</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>ndvi <span class="ot">&lt;-</span> <span class="fu">raster_cube</span>(s2_collection, v) <span class="sc">|&gt;</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>              <span class="fu">select_bands</span>(<span class="fu">c</span>(<span class="st">&quot;B04_10m&quot;</span>,<span class="st">&quot;B08_10m&quot;</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>              <span class="fu">apply_pixel</span>(<span class="st">&quot;(B08_10m - B04_10m)/(B08_10m + B04_10m)&quot;</span>, <span class="st">&quot;NDVI&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>              <span class="fu">reduce_time</span>(<span class="fu">c</span>(<span class="st">&quot;median(NDVI)&quot;</span>)) </span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>            </span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(ndvi, <span class="at">zlim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="fl">0.2</span>,<span class="dv">1</span>),<span class="at">key.pos=</span><span class="dv">1</span>, <span class="at">col=</span>viridis<span class="sc">::</span>viridis)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">

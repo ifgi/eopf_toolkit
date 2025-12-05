@@ -90,7 +90,7 @@ The items returned from our STAC request have asset hrefs like this:
 ```{r}
 items$features[[1]]$assets$B02_10m$href 
 ```
-In order for GDAL to use the correct driver, we need the URL with a prefix for the correct Zarr driver (see this [tutorial](https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/))
+In order for GDAL to use the correct driver, we need the URL with a prefix for the correct Zarr driver (see this [tutorial](https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/)).
 Additionally, we want it to point directly to the .zarr file. The function above replaces the href by one that links directly there and prepends the required prefix.
 Since you can give this function as an argument to `stac_image_collection()`, it will be applied to all assets automatically.
 
@@ -137,7 +137,7 @@ v = cube_view(srs="EPSG:32632", dx=10, dy=10, dt="P1D",
 v
 ```
 
-As you can see, the cube view summarizes the spatio-temporal geometry of the raster cube we want to create. We can see (amongst other information) that the resulting cube will have 1000 x 1000 pixels in space (10 km x 10 km at 10m resolution) and 30 time steps (1 per day for June 2025), though many of these pixels and time steps will be no-data values as we do not have complete daily coverage for the whole area.
+As you can see, the cube view summarizes the spatio-temporal geometry of the raster cube we want to create. We can see (amongst other information) that the resulting cube will have 1000 x 1000 pixels in space (10 km x 10 km at 10m resolution) and 30 time steps (1 per day for June 2025), though many of these pixels and time steps will be no-data values as we do not have complete daily coverage for the whole area. We decide to use UTM-Zone 32N (define the srs as `EPSG:32632`) for our cube view, images using other spatial references systems will be reprojected on the fly. 
 
 ### Create cube and plot an RGB and an NDVI image
 
@@ -192,7 +192,7 @@ items2 = stac_source |>
    post_request() 
   
 
-s2_collection2 = stac_image_collection(items2$features, srs = "EPSG:32632", asset_names = c("B02_10m", "B03_10m", "B04_10m", "B08_10m"), url_fun = f, property_filter = function(x) {x[["proj:code"]] == "EPSG:32632"})
+s2_collection2 = stac_image_collection(items2$features, asset_names = c("B02_10m", "B03_10m", "B04_10m", "B08_10m"), url_fun = f)
 
 ext$t0 = "2025-04-01"
 ext$t1 = "2025-04-30"

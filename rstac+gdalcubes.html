@@ -2313,7 +2313,7 @@ assets, bbox, collection, geometry, id, links, properties, stac_extensions, stac
 <pre><code>[1] &quot;https://objects.eodc.eu:443/e05ab01a9d56408d82ac32d69a5aae2a:202506-s02msil2a/30/products/cpm_v256/S2C_MSIL2A_20250630T104041_N0511_R008_T32UMD_20250630T161206.zarr/measurements/reflectance/r10m/b02&quot;</code></pre>
 </div>
 </div>
-<p>In order for GDAL to use the correct driver, we need the URL with a prefix for the correct Zarr driver (see this <a href="https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/">tutorial</a>) Additionally, we want it to point directly to the .zarr file. The function above replaces the href by one that links directly there and prepends the required prefix. Since you can give this function as an argument to <code>stac_image_collection()</code>, it will be applied to all assets automatically.</p>
+<p>In order for GDAL to use the correct driver, we need the URL with a prefix for the correct Zarr driver (see this <a href="https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/">tutorial</a>). Additionally, we want it to point directly to the .zarr file. The function above replaces the href by one that links directly there and prepends the required prefix. Since you can give this function as an argument to <code>stac_image_collection()</code>, it will be applied to all assets automatically.</p>
 <p>Now we can create an image collection from the received STAC items:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Manually set argument &quot;srs&quot;, because gdalcubes looks for proj:epsg, but in the collection there is only proj:code</span></span>
@@ -2384,7 +2384,7 @@ Temporal aggregation method: &quot;first&quot;
 Spatial resampling method: &quot;near&quot;</code></pre>
 </div>
 </div>
-<p>As you can see, the cube view summarizes the spatio-temporal geometry of the raster cube we want to create. We can see (amongst other information) that the resulting cube will have 1000 x 1000 pixels in space (10 km x 10 km at 10m resolution) and 30 time steps (1 per day for June 2025), though many of these pixels and time steps will be no-data values as we do not have complete daily coverage for the whole area.</p>
+<p>As you can see, the cube view summarizes the spatio-temporal geometry of the raster cube we want to create. We can see (amongst other information) that the resulting cube will have 1000 x 1000 pixels in space (10 km x 10 km at 10m resolution) and 30 time steps (1 per day for June 2025), though many of these pixels and time steps will be no-data values as we do not have complete daily coverage for the whole area. We decide to use UTM-Zone 32N (define the srs as <code>EPSG:32632</code>) for our cube view, images using other spatial references systems will be reprojected on the fly.</p>
 </section>
 <section id="create-cube-and-plot-an-rgb-and-an-ndvi-image" class="level3">
 <h3 class="anchored" data-anchor-id="create-cube-and-plot-an-rgb-and-an-ndvi-image">Create cube and plot an RGB and an NDVI image</h3>

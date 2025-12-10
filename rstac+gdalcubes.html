@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Creating a raster cube from STAC items of the EOPF Zarr Samples Service using rstac and gdalcubes</title>
+<title>Creating a raster cube from STAC items of the EOPF Sentinel Zarr Samples Service using rstac and gdalcubes</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -2178,7 +2178,7 @@ vertical-align: -.125em;
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Creating a raster cube from STAC items of the EOPF Zarr Samples Service using rstac and gdalcubes</h1>
+<h1 class="title">Creating a raster cube from STAC items of the EOPF Sentinel Zarr Samples Service using <code>rstac</code> and <code>gdalcubes</code></h1>
 </div>
 
 
@@ -2197,15 +2197,15 @@ vertical-align: -.125em;
 
 <section id="introduction" class="level3">
 <h3 class="anchored" data-anchor-id="introduction">Introduction</h3>
-<p>This notebook demonstrates how to create a raster data cube from STAC items from the EOPF Sentinel Zarr Samples Service using the <code>rstac</code> and <code>gdalcubes</code> packages in R. We will search for Sentinel-2 images roughly covering the Münsterland region in Germany for June 2025, and retrieve corresponding STAC items with <code>rstac</code>. We will then use <code>gdalcubes</code> to create a raster data cube and visualize an RGB plot aggregating the data to one image (using median) and compute the NDVI for that image.</p>
-<p>The <code>gdalcubes</code> package facilitates the creation of regular raster cubes from irregular image collections with differing spatial and temporal resolutions, partial spatial overlap or differing projections etc. It first collects images in so-called <em>image collections</em> and creates data cubes from them, where the spatiotemporal geometry is defined via a <em>data cube view</em>. It also has a function to directly create <em>image collections</em> from STAC items, which we will use here. For details on the functionality and concepts, see the <a href="https://gdalcubes.github.io/">gdalcubes documentation</a> and specifically <a href="https://gdalcubes.github.io/source/tutorials/vignettes/gc02_AWS_Sentinel2.html">Marius´ tutorial</a> on the example of the Sentinel-2 COG catalog on Amazon Web Services (AWS).</p>
+<p>This notebook demonstrates how to create a raster data cube from STAC items of the EOPF Sentinel Zarr Samples Service using the <code>rstac</code> and <code>gdalcubes</code> packages in R. We will search for Sentinel-2 images roughly covering the “Münsterland” region in Germany for June 2025, and retrieve corresponding STAC items with <code>rstac</code>. We will then use <code>gdalcubes</code> to create a raster data cube and visualize an RGB plot aggregating the data to one image (using median), and compute the NDVI for that image.</p>
+<p>The <code>gdalcubes</code> package facilitates the creation of regular raster cubes from irregular image collections with differing spatial and temporal resolutions, partial spatial overlap or differing projections etc. It first collects images in so-called <em>image collections</em> and creates data cubes from them, where the spatio-temporal geometry is defined via a <em>data cube view</em>. It also has a function to directly create <em>image collections</em> from STAC items, which we will use here. For details on the functionality and concepts, see the <a href="https://gdalcubes.github.io/">gdalcubes documentation</a> and specifically <a href="https://gdalcubes.github.io/source/tutorials/vignettes/gc02_AWS_Sentinel2.html">Marius´ tutorial</a> on the example of the Sentinel-2 COG catalog on Amazon Web Services (AWS).</p>
 </section>
 <section id="what-we-will-learn" class="level3">
 <h3 class="anchored" data-anchor-id="what-we-will-learn">What we will learn</h3>
 <ul>
 <li>🛰️ Retrieve STAC items for Sentinel-2 imagery in a specified AOI (roughly “Münsterland” region, Germany) and time range (June 2025) using <code>rstac</code></li>
 <li>🔎 Create an image collection from STAC items using <code>stac_image_collection()</code> in <code>gdalcubes</code></li>
-<li>🚀 Create a raster data cube with a user-defined spatiotemporal geometry using <code>cube_view()</code> and <code>raster_cube()</code> in <code>gdalcubes</code> and compute the NDVI</li>
+<li>🚀 Create a raster data cube with a user-defined spatio-temporal geometry using <code>cube_view()</code> and <code>raster_cube()</code> in <code>gdalcubes</code> and compute the NDVI</li>
 </ul>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -2217,7 +2217,7 @@ Note
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>As you’ll notice, we’ll need to make some adjustments to the workflow in certain places since gdalcubes isn’t fully optimized yet for the EOPF Sentinel Zarr Samples Service. However, the required functionality is available, and we can expect it to be more seamless in future releases.</p>
+<p>As you’ll notice, we’ll need to make a small adjustment to the workflow at one stage, since gdalcubes isn’t fully optimized yet for the EOPF Sentinel Zarr Samples Service. However, the required functionality is available, and we can expect it to be even more seamless in future releases.</p>
 </div>
 </div>
 <div class="callout callout-style-default callout-note callout-titled">
@@ -2246,42 +2246,41 @@ Note
 </section>
 <section id="create-image-collection-from-stac-items" class="level3">
 <h3 class="anchored" data-anchor-id="create-image-collection-from-stac-items">Create image collection from STAC items</h3>
-<p>We can convert STAC items received through <code>rstac</code> to <code>gdalcubes</code> image collections using the function <code>stac_image_collection()</code>. From there on, we can create raster cubes using the usual workflow.</p>
-<div class="callout callout-style-default callout-note callout-titled">
+<p>We can convert STAC items received through <code>rstac</code> to <code>gdalcubes</code> image collections using the function <code>stac_image_collection()</code>. From there on, we can create raster cubes using the usual <code>gdalcubes</code> workflow.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
 <div class="callout-title-container flex-fill">
-Note
+Tip
 </div>
 </div>
 <div class="callout-body-container callout-body">
 <p>This notebook is only meant to showcase a simple example of the usage of <code>gdalcubes</code> with STAC items. It does not contain details on the concepts and workflow of creating and further processing raster cubes. For a more in-depth introduction, please refer to the <a href="https://gdalcubes.github.io/">gdalcubes documentation</a>. This also contains a number of tutorials that explain the capabilities and potential applications of the package.</p>
 </div>
 </div>
-<p>We start with a search for image data in the EOPF Zarr Samples Service. To interact with the EOPF STAC API, we will use <code>rstac</code>:</p>
+<p>We start with a search for image data in the EOPF Sentinel Zarr Samples Service. To interact with the EOPF STAC API, we will use <code>rstac</code>:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Using a bbox roughly for &quot;Münsterland&quot; region in Germany and the month June 2025.</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co"># For the stac request, we need the bbox in WGS84</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co"># We limit the no of results to 5 for testing purposes</span></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rstac)</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gdalcubes)</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sf)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rstac)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gdalcubes)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sf)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Linking to GEOS 3.13.1, GDAL 3.11.4, PROJ 9.7.0; sf_use_s2() is TRUE</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>bbox_wgs84 <span class="ot">=</span> <span class="fu">st_bbox</span>(<span class="fu">c</span>(<span class="at">xmin =</span> <span class="fl">6.55</span>, <span class="at">xmax =</span> <span class="fl">7.8</span>, <span class="at">ymin =</span> <span class="fl">51.8</span>, <span class="at">ymax =</span> <span class="fl">52.4</span>), <span class="at">crs =</span> <span class="fu">st_crs</span>(<span class="dv">4326</span>))</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>bbox_utm <span class="ot">=</span> <span class="fu">st_transform</span>(bbox_wgs84, <span class="st">&quot;EPSG:32632&quot;</span>)</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>stac_source <span class="ot">=</span> <span class="fu">stac</span>(<span class="st">&quot;https://stac.core.eopf.eodc.eu/&quot;</span>)</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  items <span class="ot">=</span> stac_source <span class="sc">|&gt;</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">stac_search</span>(<span class="at">collections =</span> <span class="st">&quot;sentinel-2-l2a&quot;</span>,</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">datetime =</span> <span class="st">&quot;2025-06-01T00:00:00Z/2025-06-30T23:59:59Z&quot;</span>,</span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">bbox =</span> <span class="fu">c</span>(bbox_wgs84[<span class="st">&quot;xmin&quot;</span>],bbox_wgs84[<span class="st">&quot;ymin&quot;</span>],</span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>                       bbox_wgs84[<span class="st">&quot;xmax&quot;</span>],bbox_wgs84[<span class="st">&quot;ymax&quot;</span>]), <span class="at">limit =</span> <span class="dv">5</span>) <span class="sc">|&gt;</span></span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">post_request</span>() </span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">length</span>(items<span class="sc">$</span>features)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Using a bbox roughly for &quot;Münsterland&quot; region in Germany and the month June 2025.</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="co"># For the stac request, we need the bbox in WGS84</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="co"># We limit the no of results to 5 for this example</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>bbox_wgs84 <span class="ot">=</span> <span class="fu">st_bbox</span>(<span class="fu">c</span>(<span class="at">xmin =</span> <span class="fl">6.55</span>, <span class="at">xmax =</span> <span class="fl">7.8</span>, <span class="at">ymin =</span> <span class="fl">51.8</span>, <span class="at">ymax =</span> <span class="fl">52.4</span>), <span class="at">crs =</span> <span class="fu">st_crs</span>(<span class="dv">4326</span>))</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>stac_source <span class="ot">=</span> <span class="fu">stac</span>(<span class="st">&quot;https://stac.core.eopf.eodc.eu/&quot;</span>)</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  items <span class="ot">=</span> stac_source <span class="sc">|&gt;</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">stac_search</span>(<span class="at">collections =</span> <span class="st">&quot;sentinel-2-l2a&quot;</span>,</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">datetime =</span> <span class="st">&quot;2025-06-01T00:00:00Z/2025-06-30T23:59:59Z&quot;</span>,</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">bbox =</span> <span class="fu">c</span>(bbox_wgs84[<span class="st">&quot;xmin&quot;</span>],bbox_wgs84[<span class="st">&quot;ymin&quot;</span>],</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>                       bbox_wgs84[<span class="st">&quot;xmax&quot;</span>],bbox_wgs84[<span class="st">&quot;ymax&quot;</span>]), <span class="at">limit =</span> <span class="dv">5</span>) <span class="sc">|&gt;</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">post_request</span>() </span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">length</span>(items<span class="sc">$</span>features)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 5</code></pre>
 </div>
@@ -2316,11 +2315,10 @@ assets, bbox, collection, geometry, id, links, properties, stac_extensions, stac
 <p>In order for GDAL to use the correct driver, we need the URL with a prefix for the correct Zarr driver (see this <a href="https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/">tutorial</a>). Additionally, we want it to point directly to the .zarr file. The function above replaces the href by one that links directly there and prepends the required prefix. Since you can give this function as an argument to <code>stac_image_collection()</code>, it will be applied to all assets automatically.</p>
 <p>Now we can create an image collection from the received STAC items:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Manually set argument &quot;srs&quot;, because gdalcubes looks for proj:epsg, but in the collection there is only proj:code</span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Also: since the items found are not all in the same UTM zone, we will filter them them first to have all images in one SRS )</span></span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>s2_collection <span class="ot">=</span> <span class="fu">stac_image_collection</span>(items<span class="sc">$</span>features, <span class="at">asset_names =</span> <span class="fu">c</span>(<span class="st">&quot;B02_10m&quot;</span>, <span class="st">&quot;B03_10m&quot;</span>, <span class="st">&quot;B04_10m&quot;</span>, <span class="st">&quot;B08_10m&quot;</span>), <span class="at">url_fun =</span> f)</span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>s2_collection</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># the helper function f (argument &#39;url_fun&#39;) is applied to all asset hrefs </span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>s2_collection <span class="ot">=</span> <span class="fu">stac_image_collection</span>(items<span class="sc">$</span>features, <span class="at">asset_names =</span> <span class="fu">c</span>(<span class="st">&quot;B02_10m&quot;</span>, <span class="st">&quot;B03_10m&quot;</span>, <span class="st">&quot;B04_10m&quot;</span>, <span class="st">&quot;B08_10m&quot;</span>), <span class="at">url_fun =</span> f)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>s2_collection</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Image collection object, referencing 5 images with 4 bands
 Images:
@@ -2350,7 +2348,7 @@ Bands:
 <section id="create-a-cube-view" class="level3">
 <h3 class="anchored" data-anchor-id="create-a-cube-view">Create a cube view</h3>
 <p>After collecting all available images in an image collection, we will now create a raster data cube. For this, we first need to define a cube view, which specifies the desired spatio-temporal geometry of the raster cube (spatial resolution, extent, temporal resolution, time extent, etc.). For our example, we will select a small subset (10 x 10 km) north of the city of Muenster, which includes the “Rieselfelder” bird sanctuary. We collect the spatio-temporal extent in a list, which we then pass to <code>cube_view()</code>. We also specify a spatial resolution of 10m and a temporal resolution of 1 day. While the Sentinel-2 satellites have a revisit time of ~5 days (and in addition we have limited the number of items received in our STAC request to 5 in this example), swath overlaps may in principal lead to a higher temporal resolution for certain pixels, so we define 1 day here to get as much data from the image collection as we can, leading to a rather sparse cube. However, days and locations without images are interpreted as no-data values and will simply be ignored in the following steps (see <a href="https://gdalcubes.github.io/source/concepts/execution.html#chunking">https://gdalcubes.github.io/source/concepts/execution.html#chunking</a> for details).</p>
-<p>Even for the same day, swath overlaps between Sentinel-2 A and B may lead to certain locations being recorded twice. Thus, we always have to define an aggregation method. Here we use “first”: in the unlikely case that we have data from two images per day at a certain location, we simply choose the first.</p>
+<p>Even for the same day, certain locations may in principal be recorded more than once. Thus, we always have to define an aggregation method. Here we use “first”: in the unlikely case that we have data from two images per day at a certain location, we simply choose the first.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Collect spatio-temporal extent in a list</span></span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="co"># We select a coordinate north of Muenster, and define a 10km x 10km extent around it</span></span>
@@ -2384,7 +2382,7 @@ Temporal aggregation method: &quot;first&quot;
 Spatial resampling method: &quot;near&quot;</code></pre>
 </div>
 </div>
-<p>As you can see, the cube view summarizes the spatio-temporal geometry of the raster cube we want to create. We can see (amongst other information) that the resulting cube will have 1000 x 1000 pixels in space (10 km x 10 km at 10m resolution) and 30 time steps (1 per day for June 2025), though many of these pixels and time steps will be no-data values as we do not have complete daily coverage for the whole area. We decide to use UTM-Zone 32N (define the srs as <code>EPSG:32632</code>) for our cube view, images using other spatial references systems will be reprojected on the fly.</p>
+<p>As you can see, the cube view summarizes the spatio-temporal geometry of the raster cube we want to create. We can see (amongst other information) that the resulting cube will have 1000 x 1000 pixels in space (10 km x 10 km at 10m resolution) and 30 time steps (1 per day for June 2025), though many of these pixels and time steps will be no-data values as we do not have complete daily coverage for the whole area. We decide to use UTM-Zone 32N (define the srs as <code>EPSG:32632</code>) for our cube view, images in other spatial references systems will be reprojected on the fly.</p>
 </section>
 <section id="create-cube-and-plot-an-rgb-and-an-ndvi-image" class="level3">
 <h3 class="anchored" data-anchor-id="create-cube-and-plot-an-rgb-and-an-ndvi-image">Create cube and plot an RGB and an NDVI image</h3>

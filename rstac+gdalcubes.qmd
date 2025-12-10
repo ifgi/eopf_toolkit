@@ -1,5 +1,5 @@
 ---
-title: "Creating a raster cube from STAC items of the EOPF Zarr Samples Service using rstac and gdalcubes"
+title: "Creating a raster cube from STAC items of the EOPF Sentinel Zarr Samples Service using `rstac` and `gdalcubes`"
 format: html
 self-contained: true
 ---
@@ -7,10 +7,10 @@ self-contained: true
 
 ### Introduction
 
-This notebook demonstrates how to create a raster data cube from STAC items from the EOPF Sentinel Zarr Samples Service using the `rstac` and `gdalcubes` packages in R.
-We will search for Sentinel-2 images roughly covering the Münsterland region in Germany for June 2025, and retrieve corresponding STAC items with `rstac`. We will then use `gdalcubes` to create a raster data cube and visualize an RGB plot aggregating the data to one image (using median) and compute the NDVI for that image. 
+This notebook demonstrates how to create a raster data cube from STAC items of the EOPF Sentinel Zarr Samples Service using the `rstac` and `gdalcubes` packages in R.
+We will search for Sentinel-2 images roughly covering the "Münsterland" region in Germany for June 2025, and retrieve corresponding STAC items with `rstac`. We will then use `gdalcubes` to create a raster data cube and visualize an RGB plot aggregating the data to one image (using median), and compute the NDVI for that image. 
 
-The `gdalcubes` package facilitates the creation of regular raster cubes from irregular image collections with differing spatial and temporal resolutions, partial spatial overlap or differing projections etc. It first collects images in so-called _image collections_ and creates data cubes from them, where the spatiotemporal geometry is defined via a _data cube view_. It also has a function to directly create _image collections_ from STAC items, which we will use here.
+The `gdalcubes` package facilitates the creation of regular raster cubes from irregular image collections with differing spatial and temporal resolutions, partial spatial overlap or differing projections etc. It first collects images in so-called _image collections_ and creates data cubes from them, where the spatio-temporal geometry is defined via a _data cube view_. It also has a function to directly create _image collections_ from STAC items, which we will use here.
 For details on the functionality and concepts, see the [gdalcubes documentation](https://gdalcubes.github.io/) and specifically [Marius´ tutorial](https://gdalcubes.github.io/source/tutorials/vignettes/gc02_AWS_Sentinel2.html) on the example of the Sentinel-2 COG catalog on Amazon Web Services (AWS).
 
 
@@ -18,11 +18,11 @@ For details on the functionality and concepts, see the [gdalcubes documentation]
 
 - 🛰️ Retrieve STAC items for Sentinel-2 imagery in a specified AOI (roughly "Münsterland" region, Germany) and time range (June 2025) using `rstac`
 - 🔎 Create an image collection from STAC items using `stac_image_collection()` in `gdalcubes`
-- 🚀 Create a raster data cube with a user-defined spatiotemporal geometry using `cube_view()` and `raster_cube()` in `gdalcubes` and compute the NDVI 
+- 🚀 Create a raster data cube with a user-defined spatio-temporal geometry using `cube_view()` and `raster_cube()` in `gdalcubes` and compute the NDVI 
 
 
 ::: {.callout-note}
-As you’ll notice, we’ll need to make some adjustments to the workflow in certain places since gdalcubes isn’t fully optimized yet for the EOPF Sentinel Zarr Samples Service. However, the required functionality is available, and we can expect it to be more seamless in future releases.
+As you’ll notice, we’ll need to make a small adjustment to the workflow at one stage, since gdalcubes isn’t fully optimized yet for the EOPF Sentinel Zarr Samples Service. However, the required functionality is available, and we can expect it to be even more seamless in future releases.
 :::
 
 ::: {.callout-note}
@@ -44,25 +44,23 @@ Make sure to have R >=4.5.2. Install `rstac`, `sf` and `gdalcubes`. We will also
 
 ### Create image collection from STAC items 
 We can convert STAC items received through `rstac` to `gdalcubes` image collections using the function `stac_image_collection()`.
-From there on, we can create raster cubes using the usual workflow.
+From there on, we can create raster cubes using the usual `gdalcubes` workflow.
 
-::: {.callout-note}
+::: {.callout-tip}
 This notebook is only meant to showcase a simple example of the usage of `gdalcubes` with STAC items. It does not contain details on the concepts and workflow of creating and further processing raster cubes. For a more in-depth introduction, please refer to the [gdalcubes documentation](https://gdalcubes.github.io/). This also contains a number of tutorials that explain the capabilities and potential applications of the package.
 :::
 
 
-We start with a search for image data in the EOPF Zarr Samples Service. To interact with the EOPF STAC API, we will use `rstac`:
+We start with a search for image data in the EOPF Sentinel Zarr Samples Service. To interact with the EOPF STAC API, we will use `rstac`:
 ```{r}	
-# Using a bbox roughly for "Münsterland" region in Germany and the month June 2025.
-# For the stac request, we need the bbox in WGS84
-# We limit the no of results to 5 for testing purposes
 library(rstac)
 library(gdalcubes)
 library(sf)
 
-
+# Using a bbox roughly for "Münsterland" region in Germany and the month June 2025.
+# For the stac request, we need the bbox in WGS84
+# We limit the no of results to 5 for this example
 bbox_wgs84 = st_bbox(c(xmin = 6.55, xmax = 7.8, ymin = 51.8, ymax = 52.4), crs = st_crs(4326))
-bbox_utm = st_transform(bbox_wgs84, "EPSG:32632")
 
 stac_source = stac("https://stac.core.eopf.eodc.eu/")
   items = stac_source |>
@@ -97,8 +95,7 @@ Since you can give this function as an argument to `stac_image_collection()`, it
 
 Now we can create an image collection from the received STAC items:
 ```{r}
-# Manually set argument "srs", because gdalcubes looks for proj:epsg, but in the collection there is only proj:code
-# Also: since the items found are not all in the same UTM zone, we will filter them them first to have all images in one SRS )
+# the helper function f (argument 'url_fun') is applied to all asset hrefs 
 s2_collection = stac_image_collection(items$features, asset_names = c("B02_10m", "B03_10m", "B04_10m", "B08_10m"), url_fun = f)
 
 s2_collection
@@ -112,7 +109,7 @@ After collecting all available images in an image collection, we will now create
 For our example, we will select a small subset (10 x 10 km) north of the city of Muenster, which includes the "Rieselfelder" bird sanctuary. 
 We collect the spatio-temporal extent in a list, which we then pass to `cube_view()`. We also specify a spatial resolution of 10m and a temporal resolution of 1 day. While the Sentinel-2 satellites have a revisit time of ~5 days (and in addition we have limited the number of items received in our STAC request to 5 in this example), swath overlaps may in principal lead to a higher temporal resolution for certain pixels, so we define 1 day here to get as much data from the image collection as we can, leading to a rather sparse cube. However, days and locations without images are interpreted as no-data values and will simply be ignored in the following steps (see [https://gdalcubes.github.io/source/concepts/execution.html#chunking](https://gdalcubes.github.io/source/concepts/execution.html#chunking) for details).
 
-Even for the same day, swath overlaps between Sentinel-2 A and B may lead to certain locations being recorded twice. Thus, we always have to define an aggregation method. Here we use "first": in the unlikely case that we have data from two images per day at a certain location, we simply choose the first. 
+Even for the same day, certain locations may in principal be recorded more than once. Thus, we always have to define an aggregation method. Here we use "first": in the unlikely case that we have data from two images per day at a certain location, we simply choose the first. 
 
 
 ```{r}
@@ -137,7 +134,7 @@ v = cube_view(srs="EPSG:32632", dx=10, dy=10, dt="P1D",
 v
 ```
 
-As you can see, the cube view summarizes the spatio-temporal geometry of the raster cube we want to create. We can see (amongst other information) that the resulting cube will have 1000 x 1000 pixels in space (10 km x 10 km at 10m resolution) and 30 time steps (1 per day for June 2025), though many of these pixels and time steps will be no-data values as we do not have complete daily coverage for the whole area. We decide to use UTM-Zone 32N (define the srs as `EPSG:32632`) for our cube view, images using other spatial references systems will be reprojected on the fly. 
+As you can see, the cube view summarizes the spatio-temporal geometry of the raster cube we want to create. We can see (amongst other information) that the resulting cube will have 1000 x 1000 pixels in space (10 km x 10 km at 10m resolution) and 30 time steps (1 per day for June 2025), though many of these pixels and time steps will be no-data values as we do not have complete daily coverage for the whole area. We decide to use UTM-Zone 32N (define the srs as `EPSG:32632`) for our cube view, images in other spatial references systems will be reprojected on the fly. 
 
 ### Create cube and plot an RGB and an NDVI image
 

@@ -9,7 +9,7 @@ to which this activity tries to contribute working examples, and find limiting i
 
 Example notebooks:
 
-* [Reading remote Zarr files using Rarr](remote_Zarr_via_Rarr.html)
-* [Reading remote Zarr files using GDAL](remote_Zarr_via_GDAL.html)
-* [Using rstac and gdalcubes](rstac+gdalcubes.html)
-* [Fire Detection](fire_detection.html)
+* [Reading remote Zarr files using Rarr](https://ifgi.github.io/eopf_toolkit/remote_Zarr_via_Rarr.html)
+* [Reading remote Zarr files using GDAL](https://ifgi.github.io/eopf_toolkit/remote_Zarr_via_GDAL.html)
+* [Using rstac and gdalcubes](https://ifgi.github.io/eopf_toolkit/rstac+gdalcubes.html)
+* [Fire Detection](https://ifgi.github.io/eopf_toolkit/fire_detection.html)

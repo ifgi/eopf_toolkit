@@ -2268,19 +2268,30 @@ Tip
 <div class="cell-output cell-output-stderr">
 <pre><code>Linking to GEOS 3.13.1, GDAL 3.11.4, PROJ 9.7.0; sf_use_s2() is TRUE</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Using a bbox roughly for &quot;Münsterland&quot; region in Germany and the month June 2025.</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="co"># For the stac request, we need the bbox in WGS84</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="co"># We limit the no of results to 5 for this example</span></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>bbox_wgs84 <span class="ot">=</span> <span class="fu">st_bbox</span>(<span class="fu">c</span>(<span class="at">xmin =</span> <span class="fl">6.55</span>, <span class="at">xmax =</span> <span class="fl">7.8</span>, <span class="at">ymin =</span> <span class="fl">51.8</span>, <span class="at">ymax =</span> <span class="fl">52.4</span>), <span class="at">crs =</span> <span class="fu">st_crs</span>(<span class="dv">4326</span>))</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>stac_source <span class="ot">=</span> <span class="fu">stac</span>(<span class="st">&quot;https://stac.core.eopf.eodc.eu/&quot;</span>)</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  items <span class="ot">=</span> stac_source <span class="sc">|&gt;</span></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">stac_search</span>(<span class="at">collections =</span> <span class="st">&quot;sentinel-2-l2a&quot;</span>,</span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">datetime =</span> <span class="st">&quot;2025-06-01T00:00:00Z/2025-06-30T23:59:59Z&quot;</span>,</span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">bbox =</span> <span class="fu">c</span>(bbox_wgs84[<span class="st">&quot;xmin&quot;</span>],bbox_wgs84[<span class="st">&quot;ymin&quot;</span>],</span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>                       bbox_wgs84[<span class="st">&quot;xmax&quot;</span>],bbox_wgs84[<span class="st">&quot;ymax&quot;</span>]), <span class="at">limit =</span> <span class="dv">5</span>) <span class="sc">|&gt;</span></span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">post_request</span>() </span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">length</span>(items<span class="sc">$</span>features)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Using a bbox roughly for &quot;Münsterland&quot; region in Germany </span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="co"># and the month June 2025.</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="co"># For the stac request, we need the bbox in WGS84</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co"># We limit the no of results to 5 for this example</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>bbox_wgs84 <span class="ot">=</span> <span class="fu">st_bbox</span>(</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">c</span>(<span class="at">xmin =</span> <span class="fl">6.55</span>, <span class="at">xmax =</span> <span class="fl">7.8</span>, <span class="at">ymin =</span> <span class="fl">51.8</span>, <span class="at">ymax =</span> <span class="fl">52.4</span>),</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">crs =</span> <span class="fu">st_crs</span>(<span class="dv">4326</span>)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>stac_source <span class="ot">=</span> <span class="fu">stac</span>(<span class="st">&quot;https://stac.core.eopf.eodc.eu/&quot;</span>)</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>items <span class="ot">=</span> stac_source <span class="sc">|&gt;</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stac_search</span>(</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">collections =</span> <span class="st">&quot;sentinel-2-l2a&quot;</span>,</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">datetime =</span> <span class="st">&quot;2025-06-01T00:00:00Z/2025-06-30T23:59:59Z&quot;</span>,</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">bbox =</span> <span class="fu">c</span>(</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>      bbox_wgs84[<span class="st">&quot;xmin&quot;</span>],</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>      bbox_wgs84[<span class="st">&quot;ymin&quot;</span>],</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>      bbox_wgs84[<span class="st">&quot;xmax&quot;</span>],</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>      bbox_wgs84[<span class="st">&quot;ymax&quot;</span>]</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">limit =</span> <span class="dv">5</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">post_request</span>()</span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a><span class="fu">length</span>(items<span class="sc">$</span>features)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 5</code></pre>
 </div>
@@ -2298,7 +2309,7 @@ AOT_10m, B01_20m, B02_10m, B03_10m, B04_10m, B05_20m, B06_20m, B07_20m, B08_10m,
 - item&#39;s fields: 
 assets, bbox, collection, geometry, id, links, properties, stac_extensions, stac_version, type</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="do">###--&gt; Helper function to adapt URLs (adding a prefix) to make them accessible for GDAL </span></span>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="do">###--&gt; Helper function to adapt URLs (adding a prefix) to make them accessible for GDAL</span></span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>f <span class="ot">=</span> <span class="cf">function</span>(href) {</span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">paste0</span>(<span class="st">&quot;ZARR:</span><span class="sc">\&quot;</span><span class="st">/vsicurl/&quot;</span>, <span class="fu">gsub</span>(<span class="st">&quot;.zarr/&quot;</span>, <span class="st">&quot;.zarr</span><span class="sc">\&quot;</span><span class="st">/&quot;</span>, href)))</span>
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -2315,10 +2326,14 @@ assets, bbox, collection, geometry, id, links, properties, stac_extensions, stac
 <p>In order for GDAL to use the correct driver, we need the URL with a prefix for the correct Zarr driver (see this <a href="https://eopf-sample-service.github.io/eopf-sample-notebooks/gdal-explore-zarr/">tutorial</a>). Additionally, we want it to point directly to the .zarr file. The function above replaces the href by one that links directly there and prepends the required prefix. Since you can give this function as an argument to <code>stac_image_collection()</code>, it will be applied to all assets automatically.</p>
 <p>Now we can create an image collection from the received STAC items:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># the helper function f (argument &#39;url_fun&#39;) is applied to all asset hrefs </span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>s2_collection <span class="ot">=</span> <span class="fu">stac_image_collection</span>(items<span class="sc">$</span>features, <span class="at">asset_names =</span> <span class="fu">c</span>(<span class="st">&quot;B02_10m&quot;</span>, <span class="st">&quot;B03_10m&quot;</span>, <span class="st">&quot;B04_10m&quot;</span>, <span class="st">&quot;B08_10m&quot;</span>), <span class="at">url_fun =</span> f)</span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>s2_collection</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># the helper function f (argument &#39;url_fun&#39;) is applied to all asset hrefs</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>s2_collection <span class="ot">=</span> <span class="fu">stac_image_collection</span>(</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  items<span class="sc">$</span>features,</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">asset_names =</span> <span class="fu">c</span>(<span class="st">&quot;B02_10m&quot;</span>, <span class="st">&quot;B03_10m&quot;</span>, <span class="st">&quot;B04_10m&quot;</span>, <span class="st">&quot;B08_10m&quot;</span>),</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">url_fun =</span> f</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>s2_collection</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Image collection object, referencing 5 images with 4 bands
 Images:
@@ -2351,23 +2366,25 @@ Bands:
 <p>Even for the same day, certain locations may in principal be recorded more than once. Thus, we always have to define an aggregation method. Here we use “first”: in the unlikely case that we have data from two images per day at a certain location, we simply choose the first.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Collect spatio-temporal extent in a list</span></span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="co"># We select a coordinate north of Muenster, and define a 10km x 10km extent around it</span></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>rieselX <span class="ot">=</span> <span class="fl">404500.13</span></span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>rieselY <span class="ot">=</span> <span class="dv">5765279</span></span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>ext <span class="ot">=</span> <span class="fu">list</span>()</span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>left <span class="ot">=</span> rieselX <span class="sc">-</span> <span class="dv">5000</span></span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>right <span class="ot">=</span> rieselX <span class="sc">+</span> <span class="dv">5000</span></span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>bottom <span class="ot">=</span> rieselY <span class="sc">-</span> <span class="dv">5000</span></span>
-<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>top <span class="ot">=</span> rieselY <span class="sc">+</span> <span class="dv">5000</span></span>
-<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>t0 <span class="ot">=</span> <span class="st">&quot;2025-06-01&quot;</span></span>
-<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>t1 <span class="ot">=</span> <span class="st">&quot;2025-06-30&quot;</span></span>
-<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Create cube view with 10m spatial and 1 day temporal resolution, and the previously defined spatio-temporal extent</span></span>
-<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>v <span class="ot">=</span> <span class="fu">cube_view</span>(<span class="at">srs=</span><span class="st">&quot;EPSG:32632&quot;</span>, <span class="at">dx=</span><span class="dv">10</span>, <span class="at">dy=</span><span class="dv">10</span>, <span class="at">dt=</span><span class="st">&quot;P1D&quot;</span>,</span>
-<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>              <span class="at">aggregation=</span><span class="st">&quot;first&quot;</span>,</span>
-<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>              <span class="at">extent=</span>ext)</span>
-<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>v</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="co"># We select a coordinate north of Muenster close to the &quot;Rieselfelder&quot; bird sanctuary,</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="co"># and define a 10km x 10km extent around it</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>rieselX <span class="ot">=</span> <span class="fl">404500.13</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>rieselY <span class="ot">=</span> <span class="dv">5765279</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>ext <span class="ot">=</span> <span class="fu">list</span>()</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>left <span class="ot">=</span> rieselX <span class="sc">-</span> <span class="dv">5000</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>right <span class="ot">=</span> rieselX <span class="sc">+</span> <span class="dv">5000</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>bottom <span class="ot">=</span> rieselY <span class="sc">-</span> <span class="dv">5000</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>top <span class="ot">=</span> rieselY <span class="sc">+</span> <span class="dv">5000</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>t0 <span class="ot">=</span> <span class="st">&quot;2025-06-01&quot;</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>ext<span class="sc">$</span>t1 <span class="ot">=</span> <span class="st">&quot;2025-06-30&quot;</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Create cube view with 10m spatial and 1 day temporal resolution, </span></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a><span class="co"># and the previously defined spatio-temporal extent</span></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>v <span class="ot">=</span> <span class="fu">cube_view</span>(<span class="at">srs=</span><span class="st">&quot;EPSG:32632&quot;</span>, <span class="at">dx=</span><span class="dv">10</span>, <span class="at">dy=</span><span class="dv">10</span>, <span class="at">dt=</span><span class="st">&quot;P1D&quot;</span>,</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>              <span class="at">aggregation=</span><span class="st">&quot;first&quot;</span>,</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>              <span class="at">extent=</span>ext)</span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>v</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>A data cube view object
 

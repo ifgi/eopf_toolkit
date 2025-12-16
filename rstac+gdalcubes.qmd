@@ -57,23 +57,34 @@ library(rstac)
 library(gdalcubes)
 library(sf)
 
-# Using a bbox roughly for "Münsterland" region in Germany and the month June 2025.
+# Using a bbox roughly for "Münsterland" region in Germany 
+# and the month June 2025.
 # For the stac request, we need the bbox in WGS84
 # We limit the no of results to 5 for this example
-bbox_wgs84 = st_bbox(c(xmin = 6.55, xmax = 7.8, ymin = 51.8, ymax = 52.4), crs = st_crs(4326))
+bbox_wgs84 = st_bbox(
+  c(xmin = 6.55, xmax = 7.8, ymin = 51.8, ymax = 52.4),
+  crs = st_crs(4326)
+)
 
 stac_source = stac("https://stac.core.eopf.eodc.eu/")
-  items = stac_source |>
-    stac_search(collections = "sentinel-2-l2a",
+items = stac_source |>
+  stac_search(
+    collections = "sentinel-2-l2a",
     datetime = "2025-06-01T00:00:00Z/2025-06-30T23:59:59Z",
-    bbox = c(bbox_wgs84["xmin"],bbox_wgs84["ymin"],
-                       bbox_wgs84["xmax"],bbox_wgs84["ymax"]), limit = 5) |>
-    post_request() 
-  length(items$features)
+    bbox = c(
+      bbox_wgs84["xmin"],
+      bbox_wgs84["ymin"],
+      bbox_wgs84["xmax"],
+      bbox_wgs84["ymax"]
+    ),
+    limit = 5
+  ) |>
+  post_request()
+length(items$features)
 
 items
 
-###--> Helper function to adapt URLs (adding a prefix) to make them accessible for GDAL 
+###--> Helper function to adapt URLs (adding a prefix) to make them accessible for GDAL
 f = function(href) {
   return(paste0("ZARR:\"/vsicurl/", gsub(".zarr/", ".zarr\"/", href)))
 }
@@ -95,8 +106,12 @@ Since you can give this function as an argument to `stac_image_collection()`, it
 
 Now we can create an image collection from the received STAC items:
 ```{r}
-# the helper function f (argument 'url_fun') is applied to all asset hrefs 
-s2_collection = stac_image_collection(items$features, asset_names = c("B02_10m", "B03_10m", "B04_10m", "B08_10m"), url_fun = f)
+# the helper function f (argument 'url_fun') is applied to all asset hrefs
+s2_collection = stac_image_collection(
+  items$features,
+  asset_names = c("B02_10m", "B03_10m", "B04_10m", "B08_10m"),
+  url_fun = f
+)
 
 s2_collection
 ```
@@ -115,7 +130,8 @@ Even for the same day, certain locations may in principal be recorded more than 
 ```{r}
 
 #Collect spatio-temporal extent in a list
-# We select a coordinate north of Muenster, and define a 10km x 10km extent around it
+# We select a coordinate north of Muenster close to the "Rieselfelder" bird sanctuary,
+# and define a 10km x 10km extent around it
 rieselX = 404500.13
 rieselY = 5765279
 ext = list()
@@ -126,7 +142,8 @@ ext$top = rieselY + 5000
 ext$t0 = "2025-06-01"
 ext$t1 = "2025-06-30"
 
-# Create cube view with 10m spatial and 1 day temporal resolution, and the previously defined spatio-temporal extent
+# Create cube view with 10m spatial and 1 day temporal resolution, 
+# and the previously defined spatio-temporal extent
 v = cube_view(srs="EPSG:32632", dx=10, dy=10, dt="P1D",
               aggregation="first",
               extent=ext)
@@ -182,26 +199,42 @@ You can apply the same approach as above to create a composite NDVI image for th
 library(terra)
 
 items2 = stac_source |>
-   stac_search(collections = "sentinel-2-l2a",
-   datetime = "2025-04-01T00:00:00Z/2025-04-30T23:59:59Z",
-   bbox = c(bbox_wgs84["xmin"],bbox_wgs84["ymin"],
-                      bbox_wgs84["xmax"],bbox_wgs84["ymax"]), limit = 5) |>
-   post_request() 
-  
+  stac_search(
+    collections = "sentinel-2-l2a",
+    datetime = "2025-04-01T00:00:00Z/2025-04-30T23:59:59Z",
+    bbox = c(
+      bbox_wgs84["xmin"],
+      bbox_wgs84["ymin"],
+      bbox_wgs84["xmax"],
+      bbox_wgs84["ymax"]
+    ),
+    limit = 5
+  ) |>
+  post_request()
 
-s2_collection2 = stac_image_collection(items2$features, asset_names = c("B02_10m", "B03_10m", "B04_10m", "B08_10m"), url_fun = f)
+
+s2_collection2 = stac_image_collection(
+  items2$features,
+  asset_names = c("B02_10m", "B03_10m", "B04_10m", "B08_10m"),
+  url_fun = f
+)
 
 ext$t0 = "2025-04-01"
 ext$t1 = "2025-04-30"
 
-v2 = cube_view(srs="EPSG:32632", dx=10, dy=10, dt="P1D",
-              aggregation="first",
-              extent=ext)
+v2 = cube_view(
+  srs = "EPSG:32632",
+  dx = 10,
+  dy = 10,
+  dt = "P1D",
+  aggregation = "first",
+  extent = ext
+)
 
 ndvi2 <- raster_cube(s2_collection2, v2) |>
-              select_bands(c("B04_10m","B08_10m")) |>
-              apply_pixel("(B08_10m - B04_10m)/(B08_10m + B04_10m)", "NDVI") |>
-              reduce_time(c("median(NDVI)")) 
+  select_bands(c("B04_10m", "B08_10m")) |>
+  apply_pixel("(B08_10m - B04_10m)/(B08_10m + B04_10m)", "NDVI") |>
+  reduce_time(c("median(NDVI)"))
 
 
 ndvi_april <- rast(write_tif(ndvi2))
